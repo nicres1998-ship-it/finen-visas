@@ -1,0 +1,7 @@
+FINEN VISAS V21 — Revisión de diseño y navegación
+
+Se retiraron las imágenes genéricas que representaban ocupaciones o trámites incorrectos. Las fichas ahora muestran símbolos de categoría, sin fotografías engañosas.
+
+Para activar la recepción real de formularios: publicar en Netlify, verificar detección de Netlify Forms y notificaciones, probar envíos, sustituir aviso de privacidad por el definitivo.
+
+Antes de publicación: validar oferta real de cada puesto, requisitos por destino, contacto oficial, privacidad y cumplimiento legal.

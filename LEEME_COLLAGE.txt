@@ -1,0 +1,5 @@
+V24: corrección de colores de portada a azul marino, rojo y blanco.
+Galería: 8 fotos a la vez, 3 tandas, rotación cada 8.5 s.
+Fuentes: URLs de imágenes Unsplash (dependen de conexión y acceso a imágenes externas).
+Si falla la descarga, se muestra fotografía local de viaje en lugar de una tarjeta vacía.
+No se ha verificado cada fotografía en un navegador conectado ni su correspondencia exacta; antes de publicar, descargar y verificar imágenes con licencia.

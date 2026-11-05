@@ -1,0 +1,28 @@
+Fotografías reales publicadas en Unsplash (verificar condiciones de licencia, derechos de imagen y disponibilidad antes de publicar).
+La galería muestra 8 fotografías a la vez y alterna entre 3 grupos cada 8.5 segundos.
+Las imágenes se cargan desde Unsplash: requieren conexión a internet.
+
+01. Construcción [Trabajo] https://unsplash.com/photos/YoQjyA44DL4
+02. Estudiantes en biblioteca [Estudios] https://unsplash.com/photos/EP8lBWLFLkg
+03. Viajeros en aeropuerto [Viajes] https://unsplash.com/photos/YxuI5Gax5JU
+04. Turistas en París [Turismo] https://unsplash.com/photos/PuAl1O9vhuU
+05. Chef trabajando [Trabajo] https://unsplash.com/photos/ilTlHqGFNQc
+06. Pasaporte de Canadá [Documentación] https://unsplash.com/photos/aGDILBE1Kus
+07. Estudiantes en biblioteca [Estudios] https://unsplash.com/photos/ct1NZSUSWUc
+08. Visitantes en Nueva York [Turismo] https://unsplash.com/photos/HOACjraURDs
+09. Obra en construcción [Trabajo] https://unsplash.com/photos/VNMSRp2V1aw
+10. Universitarios estudiando [Estudios] https://unsplash.com/photos/Dg8WzlOE1as
+11. Maleta en aeropuerto [Viajes] https://unsplash.com/photos/yeYGZZBl65U
+12. Visitantes en Niágara [Turismo] https://unsplash.com/photos/Si1hLY0CF8k
+13. Cocinera trabajando [Trabajo] https://unsplash.com/photos/Dx2ze80gMrA
+14. Pasaportes para viajar [Documentación] https://unsplash.com/photos/_xuTyte8rY0
+15. Estudiantes graduados [Estudios] https://unsplash.com/photos/sdZN8Q4aXKU
+16. Turistas frente a Torre Eiffel [Turismo] https://unsplash.com/photos/OSiUj1l3CWs
+17. Equipo de construcción [Trabajo] https://unsplash.com/photos/8mXAvhTwE7I
+18. Personas estudiando [Estudios] https://unsplash.com/photos/gc263m4_3qg
+19. Equipaje en terminal aérea [Viajes] https://unsplash.com/photos/2ILTUZznlhM
+20. Turistas en Canadá [Turismo] https://unsplash.com/photos/IVgNdlmXKto
+21. Equipo de cocina [Trabajo] https://unsplash.com/photos/YFK5dBI6Ftc
+22. Pasaportes internacionales [Documentación] https://unsplash.com/photos/OqDx0pa6VXI
+23. Graduados universitarios [Estudios] https://unsplash.com/photos/EAOxFEI7oJ4
+24. Visitantes en París [Turismo] https://unsplash.com/photos/VBO67X8TfDY

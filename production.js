@@ -1,0 +1,1 @@
+(()=>{'use strict';document.getElementById('jumpTop')?.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));})();
