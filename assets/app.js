@@ -110,7 +110,7 @@ function finenNavPanel(section){
  if(section==='vacantes'){const input=document.querySelector('#finen-nav-search');const search=()=>{keyword.value=input.value.trim();activeSector=null;country.value='';render();document.querySelector('#modal').classList.remove('open');document.querySelector('#vacantes').scrollIntoView({behavior:'smooth',block:'start'})};document.querySelector('#finen-search-jobs').onclick=search;input.onkeydown=e=>{if(e.key==='Enter')search()}}
  document.querySelectorAll('[data-finen-nav-card]').forEach(b=>b.onclick=()=>{
  const name=group.cards[Number(b.dataset.finenNavCard)][0];
- if(section==='vacantes'){activeSector=name;keyword.value='';country.value='';render();document.querySelector('#modal').classList.remove('open');document.querySelector('#jobs').scrollIntoView({behavior:'smooth',block:'start'});return}
+ if(section==='vacantes'){activeSector=name;keyword.value='';country.value='';render();document.querySelector('#modal').classList.remove('open');document.querySelector('#vacantes').scrollIntoView({behavior:'smooth',block:'start'});return}
  if(section==='destinos'){country.value=name;keyword.value='';activeSector=null;render();document.querySelector('#modal').classList.remove('open');document.querySelector('#vacantes').scrollIntoView({behavior:'smooth',block:'start'});return}
  if(section==='catalogo-servicios'){activeService=services.some(x=>x.category===name)?name:'Todos';renderServices();document.querySelector('#modal').classList.remove('open');document.querySelector('#catalogo-servicios').scrollIntoView({behavior:'smooth',block:'start'});return}
  requestInfo(name);
