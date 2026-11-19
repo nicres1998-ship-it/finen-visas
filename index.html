@@ -320,4 +320,43 @@ function init(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
+</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script id="finen-map-interactions">
+(function(){
+const REGIONS={
+us:[["Alabama",32.37,-86.30],["Alaska",58.30,-134.42],["Arizona",33.45,-112.07],["Arkansas",34.74,-92.28],["California",38.58,-121.49],["Colorado",39.74,-104.99],["Connecticut",41.76,-72.68],["Delaware",39.16,-75.52],["Florida",30.44,-84.28],["Georgia",33.75,-84.39],["Hawái",21.31,-157.86],["Idaho",43.62,-116.20],["Illinois",39.78,-89.65],["Indiana",39.77,-86.16],["Iowa",41.59,-93.62],["Kansas",39.05,-95.69],["Kentucky",38.20,-84.87],["Luisiana",30.45,-91.19],["Maine",44.31,-69.78],["Maryland",38.98,-76.49],["Massachusetts",42.36,-71.06],["Míchigan",42.73,-84.56],["Minnesota",44.98,-93.27],["Misisipi",32.30,-90.18],["Misuri",38.58,-92.17],["Montana",46.59,-112.04],["Nebraska",40.81,-96.70],["Nevada",39.16,-119.77],["Nuevo Hampshire",43.21,-71.54],["Nueva Jersey",40.22,-74.76],["Nuevo México",35.69,-105.94],["Nueva York",42.65,-73.75],["Carolina del Norte",35.78,-78.64],["Dakota del Norte",46.81,-100.78],["Ohio",39.96,-83.00],["Oklahoma",35.47,-97.52],["Oregón",44.94,-123.03],["Pensilvania",40.27,-76.88],["Rhode Island",41.82,-71.41],["Carolina del Sur",34.00,-81.03],["Dakota del Sur",44.37,-100.35],["Tennessee",36.16,-86.78],["Texas",30.27,-97.74],["Utah",40.76,-111.89],["Vermont",44.26,-72.58],["Virginia",37.54,-77.44],["Washington",47.04,-122.90],["Virginia Occidental",38.35,-81.63],["Wisconsin",43.07,-89.40],["Wyoming",41.14,-104.82],["Distrito de Columbia",38.90,-77.04]],
+ca:[["Alberta",53.55,-113.49],["Columbia Británica",48.43,-123.37],["Manitoba",49.90,-97.14],["Nuevo Brunswick",45.96,-66.64],["Terranova y Labrador",47.56,-52.71],["Nueva Escocia",44.65,-63.58],["Ontario",43.65,-79.38],["Isla del Príncipe Eduardo",46.24,-63.13],["Quebec",46.81,-71.21],["Saskatchewan",50.45,-104.62],["Territorios del Noroeste",62.45,-114.37],["Nunavut",63.75,-68.52],["Yukón",60.72,-135.05]],
+eu:[["Alemania",52.52,13.40],["Austria",48.21,16.37],["Bélgica",50.85,4.35],["Bulgaria",42.70,23.32],["Croacia",45.81,15.98],["Chipre",35.17,33.36],["Chequia",50.08,14.44],["Dinamarca",55.68,12.57],["Eslovaquia",48.15,17.11],["Eslovenia",46.05,14.51],["España",40.42,-3.70],["Estonia",59.44,24.75],["Finlandia",60.17,24.94],["Francia",48.86,2.35],["Grecia",37.98,23.73],["Hungría",47.50,19.04],["Irlanda",53.35,-6.26],["Italia",41.90,12.50],["Letonia",56.95,24.11],["Lituania",54.69,25.28],["Luxemburgo",49.61,6.13],["Malta",35.90,14.51],["Países Bajos",52.37,4.90],["Polonia",52.23,21.01],["Portugal",38.72,-9.14],["Rumanía",44.43,26.10],["Suecia",59.33,18.07],["Noruega",59.91,10.75],["Suiza",46.95,7.45],["Reino Unido",51.51,-.13]]
+};
+const COUNTRIES={us:{name:"Estados Unidos",center:[39,-98],zoom:4,official:"https://www.careeronestop.org/JobSearch/job-search.aspx"},ca:{name:"Canadá",center:[56,-106],zoom:4,official:"https://www.jobbank.gc.ca/jobsearch/jobsearch"},eu:{name:"Europa",center:[51,12],zoom:4,official:"https://eures.europa.eu/jobseekers/find-job_en"}};
+let map,marker;const $=id=>document.getElementById(id);
+function populate(){const country=$('finenMapCountry').value;const sel=$('finenMapRegion');sel.innerHTML='<option value="">Todas las regiones</option>'+REGIONS[country].map((x,i)=>'<option value="'+i+'">'+x[0]+'</option>').join('');update()}
+function update(){const code=$('finenMapCountry').value;const conf=COUNTRIES[code];const sel=$('finenMapRegion');const region=sel.value!==''?REGIONS[code][Number(sel.value)]:null;const query=$('finenMapQuery').value.trim();const lat=region?region[1]:conf.center[0],lng=region?region[2]:conf.center[1];const label=region?region[0]+', '+conf.name:conf.name;
+ $('finenMapPlace').textContent=label;
+ $('finenMapDescription').textContent=query?'Todavía no hay empresas verificadas con el nombre «'+query+'» en este directorio. Consulta la fuente oficial para comprobar vacantes y direcciones vigentes.':'Explora '+(region?'esta región':'las regiones del destino')+' y consulta oportunidades en fuentes oficiales. Las ubicaciones no representan empresas contratantes.';
+ $('finenMapPlaces').innerHTML=region?'<span class="finen-map-place">'+region[0]+'</span>':'<span class="finen-map-place">'+REGIONS[code].length+' regiones para explorar</span>';
+ $('finenMapOfficial').href=conf.official;
+ $('finenMapExternal').href='https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lng+'#map='+(region?9:conf.zoom)+'/'+lat+'/'+lng;
+ if(map){map.setView([lat,lng],region?9:conf.zoom,{animate:true});if(marker)map.removeLayer(marker);if(region)marker=L.marker([lat,lng]).addTo(map).bindPopup('<strong>'+region[0]+'</strong><br>Referencia geográfica, no una empresa contratante').openPopup();}
+}
+function init(){
+ if(!$('finenMapCountry'))return;
+ $('finenMapCountry').addEventListener('change',populate);
+ $('finenMapRegion').addEventListener('change',update);
+ $('finenMapSearch').addEventListener('click',update);
+ $('finenMapQuery').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();update()}});
+ $('finenMapViewJobs').addEventListener('click',function(){
+  const code=$('finenMapCountry').value;const name=COUNTRIES[code].name;
+  if(typeof finenDirectory==='function'&&typeof jobs!=='undefined'){finenDirectory('Oportunidades en '+name,'Consulta las fichas laborales disponibles. La disponibilidad con un empleador específico debe confirmarse.',jobs.filter(j=>j.countries&&j.countries.includes(name)),'job')}
+  else{document.getElementById('vacantes')?.scrollIntoView({behavior:'smooth'})}
+ });
+ populate();
+ if(typeof L!=='undefined'){map=L.map('finenMapCanvas',{scrollWheelZoom:false}).setView(COUNTRIES.us.center,4);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:18}).addTo(map);update();setTimeout(()=>map.invalidateSize(),400)}
+ else{$('finenMapFallback').hidden=false;$('finenMapCanvas').style.background='linear-gradient(135deg,#dce7ef,#edf2f6)'}
+ const motion=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('finen-motion-visible');motion.unobserve(e.target)}}),{threshold:.12});
+ document.querySelectorAll('.finen-opportunities-map .finen-map-intro,.finen-opportunities-map .finen-map-controls,.finen-opportunities-map .finen-map-visual,.finen-opportunities-map .finen-map-info,.section-head,.feature h2,.cta h2,.service-item,.destination,.sector-btn,.service-sector-tile,.faq details').forEach((el,i)=>{el.classList.add('finen-motion-in');if(i%3===1)el.classList.add('finen-motion-left');if(i%3===2)el.classList.add('finen-motion-right');motion.observe(el)});
+ document.querySelectorAll('.service-item,.destination,.sector-btn,.service-sector-tile,.finen-directory-card').forEach(el=>el.classList.add('finen-motion-card'));
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
 </script></body></html>
