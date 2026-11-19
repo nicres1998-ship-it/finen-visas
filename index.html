@@ -427,7 +427,7 @@ function draw(country){
  selected=country;document.querySelectorAll('[data-tour-country]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tourCountry===country)));
  const entries=data.filter(x=>x[0]===country);
  const cards=document.getElementById('finenTourismCards');
- cards.innerHTML=entries.map((x,i)=>'<button type="button" class="finen-tourism-card" data-tour-index="'+i+'" aria-pressed="false"><img loading="lazy" src="https://images.unsplash.com/'+x[5]+'?auto=format&fit=crop&w=650&q=82" alt="Destino turístico: '+clean(x[1])+'" onerror="this.onerror=null;this.src=\''+finenTourFallback(x)+'\'"><span class="finen-tourism-card-body"><strong>'+clean(x[1])+'</strong><small>'+clean(x[2])+'</small><em>Ver en el mapa ↗</em></span></button>').join('');
+ cards.innerHTML=entries.map((x,i)=>'<button type="button" class="finen-tourism-card" data-tour-index="'+i+'" aria-pressed="false"><img loading="lazy" src="https://images.unsplash.com/'+x[5]+'?auto=format&fit=crop&w=650&q=82" alt="Destino turístico: '+clean(x[1])+'" onerror="this.onerror=null;this.src=\'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=850&q=80\'"><span class="finen-tourism-card-body"><strong>'+clean(x[1])+'</strong><small>'+clean(x[2])+'</small><em>Ver en el mapa ↗</em></span></button>').join('');
  document.getElementById('finenTourismMap').src=tourEmbed(center[country][0],center[country][1],country==='mx'?19:country==='us'?28:country==='ca'?30:17,false);
  cards.querySelectorAll('[data-tour-index]').forEach(b=>b.addEventListener('click',()=>{let x=entries[Number(b.dataset.tourIndex)];cards.querySelectorAll('button').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));document.getElementById('finenTourismMap').src=tourEmbed(x[3],x[4],.22,true)}));
 }
@@ -439,13 +439,10 @@ function init(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();</script><script id="finen-image-health">(function(){
-function fallback(img,i){
- const title=img.alt||'FINEN VISAS',palette=['#234d68','#923653','#33635f','#7a6345','#4c587a','#8b4767'],color=palette[i%palette.length];
- const safe=title.replace(/[&<>]/g,'').slice(0,46);
- const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 470"><rect width="800" height="470" fill="'+color+'"/><circle cx="650" cy="100" r="180" fill="#fff" opacity=".09"/><path d="M0 350Q210 270 430 350T800 330V470H0Z" fill="#fff" opacity=".09"/><text x="45" y="335" font-family="Arial,sans-serif" font-size="38" font-weight="700" fill="#fff">'+safe+'</text><text x="45" y="390" font-family="Arial,sans-serif" font-size="23" fill="#f5dce5">FINEN VISAS</text></svg>';
- img.onerror=null;img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
-}
-function init(){document.querySelectorAll('img:not([data-finen-checked])').forEach((img,i)=>{img.dataset.finenChecked='1';if(img.closest('#finenTourismCards'))return;img.addEventListener('error',()=>fallback(img,i),{once:true});if(img.complete&&img.naturalWidth===0)fallback(img,i)})}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-new MutationObserver(()=>init()).observe(document.documentElement,{subtree:true,childList:true});
+const photos=['photo-1566073771259-6a8506099945','photo-1504307651254-35680f356dfd','photo-1523240795612-9a054b0db644','photo-1488646953014-85cb44e25828','photo-1556761175-b413da4baf72','photo-1512813195386-6cf811ad3542','photo-1502602898657-3e91760cbb34','photo-1501785888041-af3ef285b470','photo-1497366811353-6870744d04b2','photo-1577219491135-ce391730fb2c','photo-1485738422979-f5c462d49f74','photo-1500382017468-9049fed747ef'];
+function photo(i){return 'https://images.unsplash.com/'+photos[i%photos.length]+'?auto=format&fit=crop&w=850&q=80'}
+function fallback(img){const n=Number(img.dataset.finenTry||0);if(n>=photos.length){img.onerror=null;return}img.dataset.finenTry=String(n+1);const base=Array.from(document.images).indexOf(img);img.src=photo(Math.max(0,base)+n)}
+function check(){document.querySelectorAll('img:not([data-finen-checked])').forEach(img=>{img.dataset.finenChecked='1';img.addEventListener('error',()=>fallback(img));if(img.complete&&img.naturalWidth===0)fallback(img)})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',check);else check();
+new MutationObserver(check).observe(document.documentElement,{subtree:true,childList:true});
 })();</script></body></html>
