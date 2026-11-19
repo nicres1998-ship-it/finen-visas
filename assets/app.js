@@ -7,7 +7,45 @@ const sectorPhotos={"Seguridad y vigilancia":"https://images.unsplash.com/photo-
 const sectorIcons={'Construcción':'▥','Hotelería':'♜','Gastronomía':'♨','Logística':'▣','Industria':'⚙','Agricultura':'❀','Transporte':'➜','Cuidados':'♡','Tecnología y sistemas':'⌘','Salud':'✚','Limpieza y mantenimiento':'✧','Comercio y ventas':'◇','Administración y oficinas':'▤','Energía y medio ambiente':'☼','Automotriz y mecánica':'⚙','Educación y servicios':'✎','Turismo y recreación':'✈','Seguridad y vigilancia':'⬡'};
 const serviceIcons={'Turismo':'✈','Trabajo':'▣','Estudios':'✎','Familia':'♡','Residencia':'⌂','Documentación':'▤','Orientación':'◈','Empresas':'▥','Trámites consulares':'◎','Regularización':'◉'};
 const FINEN_PHOTOS={
-'Construcción':'photo-1504307651254-35680f356dfd','Hotelería':'photo-1566073771259-6a8506099945','Logística':'photo-1586528116311-ad8dd3c8310d','Gastronomía':'photo-1577219491135-ce391730fb2c','Agricultura':'photo-1500382017468-9049fed747ef','Limpieza':'photo-1581578731548-c64695cc6952','Transporte':'photo-1449965408869-eaa3f722e40d','Salud':'photo-1576091160399-112ba8d25d1d','Tecnología':'photo-1519389950473-47ba0277781c','Educación':'photo-1503676260728-1c00da094a0b','Administración':'photo-1497366811353-6870744d04b2','Industria':'photo-1565514020179-026b92b84bb6','Mantenimiento':'photo-1504307651254-35680f356dfd','Turismo':'photo-1488646953014-85cb44e25828','Trámites consulares':'photo-1488646953014-85cb44e25828','Visas':'photo-1488646953014-85cb44e25828','Pasaportes':'photo-1488646953014-85cb44e25828','Regularización':'photo-1521791136064-7986c2920216','Asesoría':'photo-1521791136064-7986c2920216','Estudios':'photo-1523050854058-8df90110c9f1','Trabajo':'photo-1556761175-b413da4baf72'};
+"Construcción":"photo-1504307651254-35680f356dfd",
+"Hotelería":"photo-1566073771259-6a8506099945",
+"Gastronomía":"photo-1577219491135-ce391730fb2c",
+"Logística":"photo-1586528116311-ad8dd3c8310d",
+"Industria":"photo-1565514020179-026b92b84bb6",
+"Agricultura":"photo-1500382017468-9049fed747ef",
+"Transporte":"photo-1449965408869-eaa3f722e40d",
+"Cuidados":"photo-1576765607924-bab3d4a4d5b0",
+"Tecnología y sistemas":"photo-1519389950473-47ba0277781c",
+"Salud":"photo-1576091160399-112ba8d25d1d",
+"Limpieza y mantenimiento":"photo-1581578731548-c64695cc6952",
+"Comercio y ventas":"photo-1556742049-0cfed4f6a45d",
+"Administración y oficinas":"photo-1497366811353-6870744d04b2",
+"Energía y medio ambiente":"photo-1473341304170-971dccb5ac1e",
+"Automotriz y mecánica":"photo-1486262715619-67b85e0b08d3",
+"Educación y servicios":"photo-1503676260728-1c00da094a0b",
+"Turismo y recreación":"photo-1488646953014-85cb44e25828",
+"Seguridad y vigilancia":"photo-1558002038-1055907df827",
+"Turismo":"photo-1436491865332-7a61a109cc05",
+"Trabajo":"photo-1556761175-b413da4baf72",
+"Estudios":"photo-1523050854058-8df90110c9f1",
+"Residencia":"photo-1560518883-ce09059eeffa",
+"Familia":"photo-1511895426328-dc8714191300",
+"Asesoría":"photo-1551836022-d5d88e9218df",
+"Documentación":"photo-1450101499163-c8848c66ca85",
+"Europa":"photo-1502602898657-3e91760cbb34",
+"Canadá":"photo-1517935706615-2717063c2225",
+"Estados Unidos":"photo-1485738422979-f5c462d49f74",
+"Empleo":"photo-1521737711867-e3b97375f902",
+"Empresas":"photo-1497366754035-f200968a6e72",
+"Trámites consulares":"photo-1521791136064-7986c2920216",
+"Visas":"photo-1488646953014-85cb44e25828",
+"Pasaportes":"photo-1548013146-72479768bada",
+"Regularización":"photo-1589829545856-d10d557cf95f",
+"Tecnología":"photo-1519389950473-47ba0277781c",
+"Educación":"photo-1503676260728-1c00da094a0b",
+"Administración":"photo-1497366811353-6870744d04b2",
+"Mantenimiento":"photo-1581578731548-c64695cc6952"
+};
 function finenPhoto(category,title){const name=(category+' '+(title||'')).toLocaleLowerCase();let id=FINEN_PHOTOS[category];if(!id){if(/visa|pasaport|consul|migr|document|permiso|residenc|ciudadan|entrevista/.test(name))id='photo-1488646953014-85cb44e25828';else if(/trabaj|emple|labor/.test(name))id='photo-1556761175-b413da4baf72';else if(/estudi|escuela|universidad/.test(name))id='photo-1523050854058-8df90110c9f1';else if(/viaje|turis|vuelo/.test(name))id='photo-1436491865332-7a61a109cc05';else id='photo-1521791136064-7986c2920216'}return 'https://images.unsplash.com/'+id+'?auto=format&fit=crop&w=850&q=82'}
 function render(){const q=keyword.value.toLocaleLowerCase().trim(),c=country.value;
  document.querySelector('#sectorControls').innerHTML=sectorNames.map(t=>`<button class="sector-btn ${activeSector===t?'active':''}" data-sector="${esc(t)}"><img class="finen-sector-photo" src="${finenPhoto(t)}" alt="Fotografía del sector ${esc(t)}" loading="lazy"><span class="sector-mark" aria-hidden="true">${sectorIcons[t]||"◈"}</span><span>${esc(t)} <small>Explorar ↗</small></span></button>`).join('');
