@@ -356,13 +356,13 @@ const COUNTRIES={us:{name:"Estados Unidos",center:[39,-98],zoom:4,official:"http
 
 const $=id=>document.getElementById(id);
 const tags={tourism:['tourism','hotel|hostel|motel|guest_house|resort'],food:['amenity','restaurant|cafe|fast_food|food_court'],retail:['shop','.+'],industry:['landuse','industrial'],logistics:['industrial','warehouse|logistics'],construction:['office','construction|company'],agriculture:['landuse','farm|farmland|greenhouse_horticulture'],health:['amenity','hospital|clinic|doctors|nursing_home'],office:['office','.+']};
-let controller=null;
+let controller=null,companyMap=null,companyMarkers=[];
 function esc(s){return String(s||'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}
 function populate(){const code=$('finenMapCountry').value;$('finenMapRegion').innerHTML='<option value="">Elige una región para buscar empresas</option>'+REGIONS[code].map((r,i)=>'<option value="'+i+'">'+r[0]+'</option>').join('');showMap(false)}
 function current(){const code=$('finenMapCountry').value,region=$('finenMapRegion').value,conf=COUNTRIES[code];return {code,conf,place:region!==''?REGIONS[code][Number(region)]:null}}
 function embed(lat,lng,span){const left=lng-span,right=lng+span,bottom=lat-span*.65,top=lat+span*.65;return 'https://www.openstreetmap.org/export/embed.html?bbox='+encodeURIComponent([left,bottom,right,top].join(','))+'&layer=mapnik&marker='+encodeURIComponent(lat+','+lng)}
 function showMap(keepResults){const x=current(),p=x.place,lat=p?p[1]:x.conf.center[0],lng=p?p[2]:x.conf.center[1],span=p?.24:(x.code==='eu'?28:34);
- $('finenMapFrame').src=embed(lat,lng,span);
+ if(companyMap){companyMap.setView([lat,lng],p?10:x.conf.zoom,{animate:true});companyMarkers.forEach(m=>companyMap.removeLayer(m));companyMarkers=[]}
  $('finenMapPlace').textContent=p?p[0]+', '+x.conf.name:x.conf.name;
  $('finenMapDescription').textContent=p?'Explora empresas y establecimientos alrededor de '+p[0]+'. Puedes mover y ampliar el mapa.':'Selecciona una región para localizar establecimientos con nombre y dirección.';
  $('finenMapPlaces').innerHTML=p?'<span class="finen-map-place">'+esc(p[0])+'</span>':'<span class="finen-map-place">'+REGIONS[x.code].length+' regiones disponibles</span>';
@@ -386,6 +386,7 @@ async function search(){
   const unique=new Map();found.forEach(e=>{const key=e.name.toLocaleLowerCase()+'-'+e.lat.toFixed(3)+'-'+e.lng.toFixed(3);if(!unique.has(key))unique.set(key,e)});
   const list=[...unique.values()].filter(e=>!q||(e.name+' '+(e.t['addr:city']||'')).toLocaleLowerCase().includes(q)).slice(0,35);
   if(!list.length){box.textContent='No se encontraron establecimientos con ese filtro en esta zona. Prueba otro giro o región.';return}
+  if(companyMap){companyMarkers.forEach(m=>companyMap.removeLayer(m));companyMarkers=[];list.forEach(e=>{const address=[e.t['addr:street'],e.t['addr:housenumber'],e.t['addr:city']].filter(Boolean).join(' ');companyMarkers.push(L.marker([e.lat,e.lng]).addTo(companyMap).bindPopup('<strong>'+esc(e.name)+'</strong><br>'+esc(address||'Ver ubicación en el mapa')))})}
   box.innerHTML='<p style="margin:0;font-size:12px;color:#657588">'+list.length+' establecimientos encontrados en datos públicos. No implica que estén contratando.</p>'+list.map(e=>{
    const t=e.t,addr=[t['addr:housenumber'],t['addr:street'],t['addr:city'],t['addr:state'],t['addr:postcode']].filter(Boolean).join(', ');
    const url='https://www.openstreetmap.org/?mlat='+e.lat+'&mlon='+e.lng+'#map=17/'+e.lat+'/'+e.lng;
@@ -403,6 +404,7 @@ function init(){
  $('finenMapQuery').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();search()}});
  $('finenMapViewJobs').addEventListener('click',function(){const name=COUNTRIES[current().code].name;if(typeof finenDirectory==='function'&&typeof jobs!=='undefined')finenDirectory('Oportunidades en '+name,'Consulta fichas laborales. Los establecimientos del mapa no implican vacantes activas.',jobs.filter(j=>j.countries&&j.countries.includes(name)),'job')});
  populate();
+ if(typeof L!=='undefined'){try{document.querySelector('#finenMapFrame').innerHTML='';companyMap=L.map('finenMapFrame',{scrollWheelZoom:false}).setView([39,-98],4);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap contributors'}).addTo(companyMap);setTimeout(()=>companyMap.invalidateSize(),500)}catch(err){document.querySelector('#finenMapFrame').innerHTML='<div class="finen-map-loading">El mapa no está disponible en este navegador. Usa el enlace «OpenStreetMap» para explorar la región.</div>'}}
  if('IntersectionObserver' in window&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){const motion=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('finen-motion-visible');motion.unobserve(e.target)}}),{threshold:.1});document.querySelectorAll('.finen-opportunities-map .finen-map-intro,.finen-opportunities-map .finen-map-controls,.finen-opportunities-map .finen-map-visual,.finen-opportunities-map .finen-map-info,.section-head,.service-item,.destination,.sector-btn,.faq details').forEach((el,i)=>{el.classList.add('finen-motion-in');if(i%3===1)el.classList.add('finen-motion-left');if(i%3===2)el.classList.add('finen-motion-right');motion.observe(el)})}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
@@ -413,12 +415,20 @@ const center={mx:[23.5,-102],us:[39,-98],ca:[55,-106],eu:[48,13]};
 const zoom={mx:5,us:4,ca:4,eu:4};
 let map,markers=[],selected='mx';
 function clean(s){return String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function finenTourFallback(item){
+ const name=clean(item[1]),place=clean(item[2]);
+ const palettes=[['#204f6b','#78b5c8'],['#843b58','#e3ad8d'],['#295d58','#a7c7aa'],['#5e5781','#b3b5d5'],['#8b5d39','#e6bd80']];
+ const n=data.indexOf(item),p=palettes[Math.max(0,n)%palettes.length];
+ const icons=['☀','✦','◆','◈','✳','◇','✧'];
+ const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 470"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="'+p[0]+'"/><stop offset="1" stop-color="'+p[1]+'"/></linearGradient></defs><rect width="800" height="470" fill="url(#g)"/><circle cx="600" cy="130" r="100" fill="#fff" opacity=".14"/><path d="M0 350Q160 270 340 355T800 315V470H0Z" fill="#fff" opacity=".14"/><text x="610" y="255" text-anchor="middle" font-size="160" font-family="Arial" fill="#fff" opacity=".3">'+icons[n%icons.length]+'</text><text x="35" y="380" font-family="Arial,sans-serif" font-weight="bold" font-size="39" fill="#fff">'+name+'</text><text x="35" y="425" font-family="Arial,sans-serif" font-size="24" fill="#fff">'+place+'</text></svg>';
+ return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)
+}
 function mapLink(item){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(item[1]+', '+item[2])}
 function draw(country){
  selected=country;document.querySelectorAll('[data-tour-country]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tourCountry===country)));
  const entries=data.filter(x=>x[0]===country);
  const cards=document.getElementById('finenTourismCards');
- cards.innerHTML=entries.map((x,i)=>'<button type="button" class="finen-tourism-card" data-tour-index="'+i+'" aria-pressed="false"><img loading="lazy" src="https://images.unsplash.com/'+x[5]+'?auto=format&fit=crop&w=650&q=82" alt="Destino turístico: '+clean(x[1])+'" onerror="this.onerror=null;this.style.display=\'none\'"><span class="finen-tourism-card-body"><strong>'+clean(x[1])+'</strong><small>'+clean(x[2])+'</small><em>Ver en el mapa ↗</em></span></button>').join('');
+ cards.innerHTML=entries.map((x,i)=>'<button type="button" class="finen-tourism-card" data-tour-index="'+i+'" aria-pressed="false"><img loading="lazy" src="https://images.unsplash.com/'+x[5]+'?auto=format&fit=crop&w=650&q=82" alt="Destino turístico: '+clean(x[1])+'" onerror="this.onerror=null;this.src=\''+finenTourFallback(x)+'\'"><span class="finen-tourism-card-body"><strong>'+clean(x[1])+'</strong><small>'+clean(x[2])+'</small><em>Ver en el mapa ↗</em></span></button>').join('');
  if(map){markers.forEach(m=>map.removeLayer(m));markers=[];map.setView(center[country],zoom[country]);entries.forEach(x=>{markers.push(L.marker([x[3],x[4]]).addTo(map).bindPopup('<strong>'+clean(x[1])+'</strong><br>'+clean(x[2])+'<br><a href="'+mapLink(x)+'" target="_blank" rel="noopener">Abrir ubicación ↗</a>'))})}
  cards.querySelectorAll('[data-tour-index]').forEach(b=>b.addEventListener('click',()=>{let x=entries[Number(b.dataset.tourIndex)];cards.querySelectorAll('button').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));if(map){map.setView([x[3],x[4]],11,{animate:true});markers[Number(b.dataset.tourIndex)].openPopup()}else window.open(mapLink(x),'_blank','noopener')}));
 }
