@@ -93,6 +93,34 @@ function requestInfo(subject){
  openModal(type,fields,'Atención FINEN','');
  document.querySelector('#requestForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!form.reportValidity())return;const data=Object.fromEntries(new FormData(form).entries());delete data.acepto;data.fecha=new Date().toISOString();const feedback=document.querySelector('#requestFeedback');const submit=form.querySelector('[type="submit"]');submit.disabled=true;try{if(location.hostname.endsWith('.netlify.app')||document.documentElement.dataset.netlify==='true'){const params=new URLSearchParams({...data,'form-name':'finen-solicitudes'});const response=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params.toString()});if(!response.ok)throw Error('No se pudo enviar');feedback.innerHTML='<div class="form-feedback">Tu solicitud se ha enviado correctamente.</div>';form.reset();}else{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='FINEN-solicitud.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);feedback.innerHTML='<div class="form-feedback">Se descargó tu solicitud para conservarla. Este archivo no envía datos a FINEN: la recepción en línea se habilita al publicar el sitio con el formulario conectado.</div>';}}catch(err){feedback.innerHTML='<div class="form-feedback">No fue posible enviar la solicitud. Inténtalo de nuevo más tarde.</div>'}finally{submit.disabled=false}};
 }
+
+function finenNavPanel(section){
+ const groups={
+ vacantes:{title:'Explora oportunidades laborales',cards:[['Construcción','Oficios y proyectos de obra'],['Hotelería','Atención y servicios turísticos'],['Logística','Almacenes y distribución'],['Gastronomía','Cocina y servicios de alimentos']]},
+ destinos:{title:'Elige tu destino',cards:[['Estados Unidos','Oportunidades y orientación migratoria'],['Canadá','Servicios y alternativas de movilidad'],['Europa','Información por país y tipo de trámite']]},
+ 'catalogo-servicios':{title:'Servicios migratorios',cards:[['Visas de turismo','Orientación y requisitos'],['Visas de estudio','Estudios en el extranjero'],['Visas y permisos laborales','Opciones según destino'],['Apoyo documental','Integración de expedientes']]},
+ firma:{title:'Conoce nuestro acompañamiento',cards:[['Orientación inicial','Revisamos el tipo de servicio que buscas'],['Revisión documental','Te explicamos los documentos aplicables'],['Seguimiento','Conoce las etapas de tu solicitud']]},
+ empresas:{title:'Soluciones para empresas',cards:[['Reclutamiento','Vinculación con perfiles laborales'],['Preselección','Evaluación inicial de candidatos'],['Coordinación','Acompañamiento documental']]}
+ };
+ const group=groups[section];if(!group)return;
+ const cards=group.cards.map((c,i)=>'<button type="button" class="finen-nav-card" data-finen-nav-card="'+i+'"><strong>'+esc(c[0])+' ↗</strong><small>'+esc(c[1])+'</small></button>').join('');
+ openModal(group.title,'<p class="detail-lead">Selecciona una opción para explorarla o solicita orientación personalizada.</p><div class="finen-nav-cards">'+cards+'</div><button class="detail-cta" id="finen-nav-request">Solicitar información y asesoría ↗</button>','FINEN VISAS','');
+ document.querySelectorAll('[data-finen-nav-card]').forEach(b=>b.onclick=()=>{
+ const name=group.cards[Number(b.dataset.finenNavCard)][0];
+ if(section==='vacantes'){activeSector=name;keyword.value='';country.value='';render();document.querySelector('#modal').classList.remove('open');document.querySelector('#jobs').scrollIntoView({behavior:'smooth',block:'start'});return}
+ if(section==='destinos'){country.value=name;keyword.value='';activeSector=null;render();document.querySelector('#modal').classList.remove('open');document.querySelector('#vacantes').scrollIntoView({behavior:'smooth',block:'start'});return}
+ if(section==='catalogo-servicios'){activeService=services.some(x=>x.category===name)?name:'Todos';renderServices();document.querySelector('#modal').classList.remove('open');document.querySelector('#catalogo-servicios').scrollIntoView({behavior:'smooth',block:'start'});return}
+ requestInfo(name);
+ });
+ document.querySelector('#finen-nav-request').onclick=()=>requestInfo('Orientación: '+group.title);
+}
+document.querySelectorAll('.links a,.menu-panel a').forEach(a=>{
+ const section=(a.getAttribute('href')||'').replace('#','');
+ if(['vacantes','destinos','catalogo-servicios','firma','empresas'].includes(section)){
+ a.addEventListener('click',e=>{e.preventDefault();document.querySelector('#menuPanel')?.classList.remove('show');finenNavPanel(section)});
+ }
+});
+
 document.querySelector('#searchForm').onsubmit=e=>{e.preventDefault();activeSector=null;render();document.querySelector('#vacantes').scrollIntoView({behavior:'smooth'})};document.querySelectorAll('[data-search]').forEach(b=>b.onclick=()=>{keyword.value=b.dataset.search;country.value='';activeSector=null;render();document.querySelector('#vacantes').scrollIntoView({behavior:'smooth'})});document.querySelectorAll('[data-dest]').forEach(a=>a.onclick=()=>{country.value=a.dataset.dest;keyword.value='';activeSector=null;render()});
 document.querySelector('#contactBtn').onclick=()=>requestInfo('Orientación migratoria o laboral');document.querySelectorAll('a[href="#contacto"]').forEach(a=>{if(a.textContent.includes('Solicitar asesoría'))a.addEventListener('click',e=>{e.preventDefault();requestInfo('Orientación migratoria o laboral')})});document.querySelector('#close').onclick=document.querySelector('#modalOk').onclick=()=>document.querySelector('#modal').classList.remove('open');document.querySelector('#modal').onclick=e=>{if(e.target.id==='modal')e.currentTarget.classList.remove('open')};document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelector('#modal').classList.remove('open')});document.querySelector('#menu').onclick=()=>document.querySelector('#menuPanel').classList.toggle('show');document.querySelectorAll('.menu-panel a').forEach(a=>a.onclick=()=>document.querySelector('#menuPanel').classList.remove('show'));
 document.querySelector('#serviceSearch').addEventListener('input',renderServices);
