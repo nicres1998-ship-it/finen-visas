@@ -27,7 +27,7 @@ const FINEN_PHOTOS={
 "Seguridad y vigilancia":"photo-1558002038-1055907df827",
 "Turismo":"photo-1436491865332-7a61a109cc05",
 "Trabajo":"photo-1556761175-b413da4baf72",
-"Estudios":"photo-1523050854058-8df90110c9f1",
+"Estudios":"photo-1523240795612-9a054b0db644",
 "Residencia":"photo-1560518883-ce09059eeffa",
 "Familia":"photo-1511895426328-dc8714191300",
 "Asesoría":"photo-1551836022-d5d88e9218df",
@@ -46,9 +46,9 @@ const FINEN_PHOTOS={
 "Administración":"photo-1497366811353-6870744d04b2",
 "Mantenimiento":"photo-1581578731548-c64695cc6952"
 };
-function finenPhoto(category,title){const name=(category+' '+(title||'')).toLocaleLowerCase();let id=FINEN_PHOTOS[category];if(!id){if(/visa|pasaport|consul|migr|document|permiso|residenc|ciudadan|entrevista/.test(name))id='photo-1488646953014-85cb44e25828';else if(/trabaj|emple|labor/.test(name))id='photo-1556761175-b413da4baf72';else if(/estudi|escuela|universidad/.test(name))id='photo-1523050854058-8df90110c9f1';else if(/viaje|turis|vuelo/.test(name))id='photo-1436491865332-7a61a109cc05';else id='photo-1521791136064-7986c2920216'}return 'https://images.unsplash.com/'+id+'?auto=format&fit=crop&w=850&q=82'}
+function finenPhoto(category,title){const name=(category+' '+(title||'')).toLocaleLowerCase();let id=FINEN_PHOTOS[category];if(/visas? de estudio|visa estudiantil|estudios en el extranjero/i.test(title||''))id='photo-1523240795612-9a054b0db644';if(!id){if(/visa|pasaport|consul|migr|document|permiso|residenc|ciudadan|entrevista/.test(name))id='photo-1488646953014-85cb44e25828';else if(/trabaj|emple|labor/.test(name))id='photo-1556761175-b413da4baf72';else if(/estudi|escuela|universidad/.test(name))id='photo-1523050854058-8df90110c9f1';else if(/viaje|turis|vuelo/.test(name))id='photo-1436491865332-7a61a109cc05';else id='photo-1521791136064-7986c2920216'}return 'https://images.unsplash.com/'+id+'?auto=format&fit=crop&w=850&q=82'}
 function render(){const q=keyword.value.toLocaleLowerCase().trim(),c=country.value;
- document.querySelector('#sectorControls').innerHTML=sectorNames.map(t=>`<button class="sector-btn ${activeSector===t?'active':''}" data-sector="${esc(t)}"><img class="finen-sector-photo" src="${finenPhoto(t)}" alt="Fotografía del sector ${esc(t)}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=850&q=82'"><span class="sector-mark" aria-hidden="true">${sectorIcons[t]||"◈"}</span><span>${esc(t)} <small>Explorar ↗</small></span></button>`).join('');
+ document.querySelector('#sectorControls').innerHTML=sectorNames.map(t=>`<button class="sector-btn ${activeSector===t?'active':''}" data-sector="${esc(t)}"><img class="finen-sector-photo" src="${finenPhoto(t)}" alt="Fotografía del sector ${esc(t)}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=850&q=82'"><span class="sector-mark" aria-hidden="true">${sectorIcons[t]||"◈"}</span><span>${esc(t)} <small>Explorar ↗</small></span></button>`).join('');
  document.querySelectorAll('[data-sector]').forEach(b=>b.onclick=()=>{activeSector=b.dataset.sector;render();document.querySelector('#jobs').scrollIntoView({behavior:'smooth',block:'start'})});
  let list=jobs.filter(j=>(!activeSector||j.sector===activeSector)&&(!c||j.countries.includes(c))&&(!q||(j.title+' '+j.sector+' '+j.desc).toLocaleLowerCase().includes(q)));
  document.querySelector('#empty').style.display=list.length||(!activeSector&&!q&&!c)?'none':'block';
