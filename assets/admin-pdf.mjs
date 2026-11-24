@@ -1,3 +1,5 @@
+import * as PDFLib from './vendor/pdf-lib-1.17.1.mjs';
+
 const labels = {
   folio: 'Folio de referencia', fecha: 'Emisión', vence: 'Vencimiento',
   contrato: 'Folio de contrato', nombre: 'Titular', telefono: 'Teléfono',
