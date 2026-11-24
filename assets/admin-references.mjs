@@ -24,10 +24,12 @@ async function request(path, body, auth = session) {
     headers,
     body: body === undefined ? undefined : JSON.stringify(body)
   });
-  const result = await response.json();
+  const payload = await response.text();
+  const result = payload.trim() && response.headers.get('content-type')?.includes('json')
+    ? JSON.parse(payload) : null;
   if (!response.ok) {
     if (response.status === 401 && auth && auth === session) reset();
-    throw Error(result.message || result.msg || 'No fue posible completar la consulta.');
+    throw Error(result?.message || result?.msg || 'No fue posible completar la consulta.');
   }
   return result;
 }
