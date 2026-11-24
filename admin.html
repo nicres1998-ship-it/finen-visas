@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <title>Administración | FINEN VISA ADVISORY</title>
-  <script type="module" src="assets/admin-references.mjs?v=pdfdirecto2"></script>
+  <script type="module" src="assets/admin-references.mjs?v=editorficha1"></script>
   <style>
     :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #183747; background: #f1f7f7 }
     * { box-sizing: border-box }
@@ -33,7 +33,14 @@
     .scroll { overflow: auto }
     table { width: 100%; border-collapse: collapse; text-align: left }
     th, td { padding: .6rem; border-bottom: 1px solid #d5e5e5 }
-    #draft-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr)); gap:.6rem 1rem }
+    .sheet-scroll { overflow-x:auto; border:1px solid #bfd4d7; border-radius:.65rem }
+    #draft-fields { position:relative; width:100%; min-width:690px; aspect-ratio:792 / 583;
+      background:#eaf5f5 url("assets/ficha-editor-fondo.jpg") center / 100% 100% no-repeat }
+    #draft-fields input { position:absolute; inset:auto; margin:0; max-width:none; padding:0 .25em;
+      background:#f7fbff; border:1px solid #749aa3; border-radius:.22em; font-size:clamp(10px,1.3vw,16px) }
+    #draft-fields input[name="importe"] { font-size:clamp(18px,3vw,34px); font-weight:750 }
+    #draft-fields input:focus { outline:2px solid #117886; outline-offset:1px }
+    #draft-form > .actions { margin-top:.8rem; justify-content:flex-end }
     details { margin:1rem 0 }
     #message[data-error] { color: #a32727 }
   </style>
@@ -47,10 +54,10 @@
   <main>
     <p id="message" role="status" aria-live="polite"></p>
     <section id="editor" aria-labelledby="editor-title">
-      <h1 id="editor-title">Nueva ficha de pago</h1>
+      <h1 id="editor-title">Ficha maestra FINEN</h1>
       <form id="draft-form">
-        <div id="draft-fields"></div>
-        <div class="actions"><button>Preparar registro</button><button class="secondary" id="open-login" type="button">Iniciar sesión</button></div>
+        <div class="sheet-scroll"><div id="draft-fields"></div></div>
+        <div class="actions"><button>Registrar ficha</button><a id="editor-copy" class="download" hidden>Guardar copia</a><button id="editor-next" class="secondary" type="button" hidden>Nueva referencia</button><button class="secondary" id="open-login" type="button">Iniciar sesión</button></div>
       </form>
     </section>
     <form id="login" hidden>

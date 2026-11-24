@@ -1,6 +1,6 @@
 const base = 'https://upbcsdocsoicujeylpmx.supabase.co';
 const key = 'sb_publishable_wOqfHlkJATss_6Ow_6jgaw_GepOkl6s';
-import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256, fillMaster, validateMaster } from './admin-pdf.mjs?v=expediente1';
+import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256, fillMaster, validateMaster } from './admin-pdf.mjs?v=editorficha1';
 
 import { localMaster } from './admin-template.mjs';
 
@@ -48,20 +48,31 @@ const templatePicker = byId('template');
 let masterBytes;
 let preparingDraft = false;
 const requiredFields = new Set(['folio', 'fecha', 'vence', 'contrato', 'nombre', 'concepto', 'importe', 'letra']);
-for (const [name, label] of Object.entries(labels)) {
-  if (name === 'folio_pie') continue;
-  const entry = document.createElement('label');
-  entry.textContent = label;
+const editorCopy = byId('editor-copy');
+const editorNext = byId('editor-next');
+const positions = {
+  folio:[31,127,114,15], fecha:[165,127,88,15], vence:[273,127,88,15],
+  contrato:[396,127,133,15], telefono:[549,127,212,15], nombre:[31,166,330,15],
+  correo:[396,166,365,15], importe:[396,236,365,44], letra:[396,288,365,18],
+  concepto:[396,323,365,17]
+};
+for (const [name, [x, y, width, height]] of Object.entries(positions)) {
   const input = document.createElement('input');
   input.name = name;
+  input.setAttribute('aria-label', labels[name]);
+  input.style.left = (x / 792 * 100) + '%';
+  input.style.top = (y / 583 * 100) + '%';
+  input.style.width = (width / 792 * 100) + '%';
+  input.style.height = (height / 583 * 100) + '%';
   input.maxLength = name === 'folio' ? 24 : 200;
   input.required = requiredFields.has(name);
   if (name === 'fecha' || name === 'vence') input.type = 'date';
   if (name === 'folio') input.pattern = 'RP-[0-9]{4}-[0-9]{1,16}';
   if (name === 'importe') input.inputMode = 'decimal';
-  entry.append(input);
-  byId('draft-fields').append(entry);
+  byId('draft-fields').append(input);
 }
+editorNext.onclick = () => newReference.click();
+
 function today() {
   return new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
 }
@@ -118,7 +129,7 @@ draftForm.addEventListener('submit', async event => {
       const value = draftForm.elements[key === 'folio_pie' ? 'folio' : key].value.trim();
       return [key, key === 'fecha' || key === 'vence' ? value.split('-').reverse().join('/') : value];
     }));
-    draft = validateFields(fields);
+    draft = { ...validateFields(fields), fromEditor: true };
     editor.hidden = true;
     login.hidden = Boolean(session);
     if (session) {
@@ -198,6 +209,11 @@ function clearFicha() {
   verifyLink.hidden = true;
   verifyLink.removeAttribute('href');
   newReference.hidden = true;
+  editorNext.hidden = true;
+  editorCopy.hidden = true;
+  editorCopy.removeAttribute('href');
+  draftForm.querySelector('button').disabled = false;
+  for (const input of byId('draft-fields').querySelectorAll('input')) input.readOnly = false;
 }
 
 function reset() {
@@ -311,6 +327,15 @@ issue.addEventListener('click', async () => {
     verifyLink.hidden = false;
     completed = true;
     newReference.hidden = Boolean(current.fromPdf);
+    if (current.fromEditor && bytes) {
+      editor.hidden = false;
+      editorCopy.href = downloadUrl;
+      editorCopy.download = download.download;
+      editorCopy.hidden = false;
+      editorNext.hidden = false;
+      draftForm.querySelector('button').disabled = true;
+      for (const input of byId('draft-fields').querySelectorAll('input')) input.readOnly = true;
+    }
     draft = undefined;
     message(current.fromPdf
       ? 'Ficha registrada. Regresa al PDF maestro y pulsa «Guardar copia» para guardar la ficha del cliente.'

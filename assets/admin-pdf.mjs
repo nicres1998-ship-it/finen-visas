@@ -60,6 +60,7 @@ export async function templateFingerprint(page, normalizeCompression = false) {
 export const MASTER = '0cc1c6a5f328bbe4213e742cf1343f09f68abebed9281c0a337f014c4360ab98';
 const MASTER_DECODED = '666542c8c01dca2d818de977b5698a56c46330df6086e7df001726004cdcd31a';
 const MASTER_CHROME = 'e9e6cbfadf8e9886c5ae80d0a8be9d9ff56f6865c502888220a11804b1a10b09';
+const MASTER_DIRECT = '95589a6aa89915ee33ce5dc63e5f12fdac099906bc528a4b1e4def86d3fafee1';
 const QR_IMAGE = 'fzImg8';
 
 function normalizeDate(raw) {
@@ -100,7 +101,7 @@ export async function readFicha(bytes) {
 export async function inspectMaster(document) {
   const [page, ...rest] = document.getPages();
   const normalized = page && !rest.length ? await templateFingerprint(page, true) : '';
-  const chromeMaster = normalized === MASTER_CHROME;
+  const chromeMaster = normalized === MASTER_CHROME || normalized === MASTER_DIRECT;
   if (!page || rest.length || (!chromeMaster && normalized !== MASTER_DECODED
       && await templateFingerprint(page) !== MASTER)) {
     throw Error('No pude reconocer esta versión de la ficha editable. Adjunta ese mismo PDF en el chat para revisar cómo lo guardó tu lector.');
@@ -169,6 +170,15 @@ export async function prepareDeliveryPdf({ bytes, fields, chromeMaster }, token)
   images.set(PDFName.of(QR_IMAGE), context.register(qr));
 
   if (chromeMaster) {
+    const form = document.getForm();
+    const registerButton = form.getFieldMaybe('registrar_finen');
+    if (registerButton) {
+      for (const widget of registerButton.acroField.getWidgets()) {
+        const ref = context.getObjectRef(widget.dict);
+        if (ref) page.node.removeAnnot(ref);
+      }
+      form.removeField(registerButton);
+    }
     const annotations = page.node.Annots();
     let verificationLink;
     for (let i = annotations.size() - 1; i >= 0; i--) {
