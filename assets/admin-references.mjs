@@ -478,18 +478,56 @@ function renderRow(row) {
     actions.append(downloadButton);
   }
   if (row.estatus === 'PENDIENTE') {
-    for (const [status, label] of [['PAGADA', 'Confirmar pago'], ['CANCELADA', 'Cancelar referencia']]) {
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'secondary';
+    edit.textContent = 'Editar referencia';
+    edit.onclick = () => {
+      const picker = byId('edit-pdf');
+      picker.value = '';
+      byId('edit-error').textContent = '';
+      byId('edit-folio').textContent = row.folio;
+      byId('edit-dialog').showModal();
+      byId('edit-form').onsubmit = async event => {
+        event.preventDefault();
+        const submit = event.submitter;
+        submit.disabled = true;
+        try {
+          const auth = session;
+          const file = picker.files[0];
+          if (!file || file.size > 25 * 1024 * 1024) throw Error('Selecciona un PDF de hasta 25 MB.');
+          const bytes = await file.arrayBuffer();
+          const parsed = await readFicha(bytes);
+          if (!parsed.chromeMaster || parsed.fields.folio !== row.folio) {
+            throw Error('Selecciona la ficha editable de FINEN con el mismo folio.');
+          }
+          const encoded = await pdfBase64(bytes);
+          if (!auth || auth !== session) throw Error('Inicia sesión nuevamente.');
+          await rpc('finen_editar_expediente', {
+            p_campos: parsed.fields, p_fecha_emision: parsed.issue, p_fecha_vencimiento: parsed.due,
+            p_importe: parsed.amount, p_archivo_base64: encoded
+          });
+          byId('edit-dialog').close();
+          message('Referencia y PDF actualizados. Envía al cliente la copia corregida.');
+          await loadHistory();
+        } catch (error) {
+          byId('edit-error').textContent = error.message;
+        } finally { submit.disabled = false; }
+      };
+    };
+    actions.append(edit);
+  }
+  if (row.estatus === 'PENDIENTE') {
+    for (const [status, label] of [['PAGADA', 'Confirmar pago']]) {
       const button = document.createElement('button');
       button.className = 'secondary';
       button.textContent = label;
       button.onclick = async () => {
         if (!confirm(label + ' · ' + row.folio + ' ¿Continuar?')) return;
-        const reason = status === 'CANCELADA' ? prompt('Motivo de cancelación')?.trim() : null;
-        if (status === 'CANCELADA' && !reason) return;
         const buttons = [...actions.querySelectorAll('button')];
         buttons.forEach(control => { control.disabled = true; });
         try {
-          await rpc('finen_cambiar_estatus', { p_id: row.id, p_estatus: status, p_motivo: reason });
+          await rpc('finen_cambiar_estatus', { p_id: row.id, p_estatus: status, p_motivo: null });
           message('Estatus actualizado a ' + status + '.');
           await loadHistory();
         } catch (error) {

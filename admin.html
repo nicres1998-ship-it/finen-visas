@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <title>Administración | FINEN VISA ADVISORY</title>
-  <script type="module" src="assets/admin-references.mjs?v=nombreRF1"></script>
+  <script type="module" src="assets/admin-references.mjs?v=editar1"></script>
   <style>
     :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #183747; background: #f1f7f7 }
     * { box-sizing: border-box }
@@ -120,6 +120,19 @@
         </div>
       </section>
     </div>
+    <dialog id="edit-dialog">
+      <h2>Editar referencia <span id="edit-folio"></span></h2>
+      <form id="edit-form">
+        <label>Sube el PDF editable corregido con el mismo folio
+          <input id="edit-pdf" type="file" accept=".pdf,application/pdf" required>
+        </label>
+        <p id="edit-error" role="alert"></p>
+        <div class="actions">
+          <button>Guardar cambios</button>
+          <button type="button" class="secondary" onclick="this.closest('dialog').close()">Cerrar</button>
+        </div>
+      </form>
+    </dialog>
   </main>
 </body>
 </html>
