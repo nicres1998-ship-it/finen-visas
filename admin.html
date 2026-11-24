@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <title>Administración | FINEN VISA ADVISORY</title>
-  <script type="module" src="assets/admin-references.mjs?v=editorficha1"></script>
+  <script type="module" src="assets/admin-references.mjs?v=copiaregistro1"></script>
   <style>
     :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #183747; background: #f1f7f7 }
     * { box-sizing: border-box }
@@ -57,7 +57,7 @@
       <h1 id="editor-title">Ficha maestra FINEN</h1>
       <form id="draft-form">
         <div class="sheet-scroll"><div id="draft-fields"></div></div>
-        <div class="actions"><button>Registrar ficha</button><a id="editor-copy" class="download" hidden>Guardar copia</a><button id="editor-next" class="secondary" type="button" hidden>Nueva referencia</button><button class="secondary" id="open-login" type="button">Iniciar sesión</button></div>
+        <div class="actions"><button id="save-draft" type="button">Guardar copia</button><button id="editor-register" disabled>Ir a registrar ficha</button><a id="editor-copy" class="download" hidden>Descargar ficha definitiva</a><button id="editor-next" class="secondary" type="button" hidden>Nueva referencia</button><button class="secondary" id="open-login" type="button">Iniciar sesión</button></div>
       </form>
     </section>
     <form id="login" hidden>
@@ -80,8 +80,8 @@
           </label>
           <p id="template-status" role="status"></p>
         </details>
-        <details>
-          <summary>Importar una ficha ya llenada</summary>
+        <details id="import-settings" open>
+          <summary>Subir copia editable para registrar</summary>
           <label>Ficha de pago editable
             <input id="pdf" type="file" accept="application/pdf,.pdf">
           </label>
@@ -90,7 +90,7 @@
         <div class="actions">
           <button id="issue" disabled>Registrar ficha</button>
           <a class="download" id="verify-link" target="_blank" rel="noopener noreferrer" hidden>Ver tarjeta registrada</a>
-          <a class="download" id="download" hidden>Guardar copia</a>
+          <a class="download" id="download" hidden>Descargar ficha definitiva</a>
           <button class="secondary" id="new-reference" hidden>Nueva referencia</button>
         </div>
       </section>

@@ -1,6 +1,6 @@
 const base = 'https://upbcsdocsoicujeylpmx.supabase.co';
 const key = 'sb_publishable_wOqfHlkJATss_6Ow_6jgaw_GepOkl6s';
-import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256, fillMaster, validateMaster } from './admin-pdf.mjs?v=editorficha1';
+import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256, fillMaster, validateMaster } from './admin-pdf.mjs?v=copiaregistro1';
 
 import { localMaster } from './admin-template.mjs';
 
@@ -101,6 +101,7 @@ templatePicker.addEventListener('change', async () => {
     masterBytes = bytes;
     templateState();
     byId('template-settings').open = false;
+    if (!editor.hidden) message('Plantilla guardada en este navegador. Ya puedes pulsar «Guardar copia».');
     if (draft && session) await prepareDraft();
   } catch (error) {
     message(error.message, true);
@@ -122,31 +123,63 @@ async function prepareDraft() {
   } finally { preparingDraft = false; }
 }
 
-draftForm.addEventListener('submit', async event => {
-  event.preventDefault();
+const saveDraft = byId('save-draft');
+const editorRegister = byId('editor-register');
+draftForm.addEventListener('input', () => { editorRegister.disabled = true; });
+
+saveDraft.addEventListener('click', async () => {
+  if (!draftForm.reportValidity()) return;
+  saveDraft.disabled = true;
   try {
     const fields = Object.fromEntries(Object.keys(labels).map(key => {
       const value = draftForm.elements[key === 'folio_pie' ? 'folio' : key].value.trim();
       return [key, key === 'fecha' || key === 'vence' ? value.split('-').reverse().join('/') : value];
     }));
-    draft = { ...validateFields(fields), fromEditor: true };
-    editor.hidden = true;
-    login.hidden = Boolean(session);
-    if (session) {
-      clearFicha();
-      await prepareDraft();
-    } else {
-      message('Los datos están listos. Inicia sesión para revisarlos y registrar la ficha.');
-      login.elements.email.focus();
+    validateFields(fields);
+    if (!masterBytes) {
+      try { masterBytes = await localMaster(); } catch { /* El selector permite configurarla. */ }
     }
+    if (!masterBytes) {
+      message('Selecciona la ficha maestra una sola vez y después pulsa «Guardar copia».');
+      templatePicker.click();
+      return;
+    }
+    const { bytes } = await fillMaster(masterBytes, fields);
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fields.folio + '-editable.pdf';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    editorRegister.disabled = false;
+    message('Copia editable preparada. Ve a «Ir a registrar ficha» y selecciona el PDF que guardaste.');
   } catch (error) { message(error.message, true); }
+  finally { saveDraft.disabled = false; }
 });
+
+let importing = false;
+function openImport() {
+  importing = true;
+  draft = undefined;
+  editor.hidden = true;
+  login.hidden = Boolean(session);
+  byId('import-settings').open = true;
+  if (!session) login.elements.email.focus();
+  message('Inicia sesión si se te solicita y selecciona la copia editable de la ficha.');
+}
+
+draftForm.addEventListener('submit', event => {
+  event.preventDefault();
+  if (!editorRegister.disabled) openImport();
+});
+if (new URLSearchParams(location.search).get('modo') === 'registro') openImport();
 
 newReference.addEventListener('click', () => {
   const registeredFolio = ficha?.fields.folio ?? '';
   const parts = /^(RP-\d{4}-)(\d+)$/.exec(registeredFolio);
   clearFicha();
   draft = undefined;
+  importing = false;
   draftForm.reset();
   if (parts) draftForm.elements.folio.value = parts[1] + String(BigInt(parts[2]) + 1n).padStart(parts[2].length, '0');
   draftForm.elements.fecha.value = today();
@@ -212,7 +245,8 @@ function clearFicha() {
   editorNext.hidden = true;
   editorCopy.hidden = true;
   editorCopy.removeAttribute('href');
-  draftForm.querySelector('button').disabled = false;
+  saveDraft.disabled = false;
+  editorRegister.disabled = true;
   for (const input of byId('draft-fields').querySelectorAll('input')) input.readOnly = false;
 }
 
@@ -227,8 +261,8 @@ function reset() {
   byId('search').value = '';
   byId('panel').hidden = true;
   byId('logout').hidden = true;
-  login.hidden = !draft;
-  editor.hidden = Boolean(draft);
+  login.hidden = !draft && !importing;
+  editor.hidden = Boolean(draft) || importing;
   if (!draft) { draftForm.reset(); draftForm.elements.fecha.value = today(); }
 }
 
@@ -266,6 +300,7 @@ login.addEventListener('submit', async event => {
 byId('logout').addEventListener('click', () => {
   const auth = session;
   draft = undefined;
+  importing = false;
   reset();
   message('Sesión cerrada.');
   request('/auth/v1/logout', {}, auth).catch(() => {});
@@ -339,7 +374,7 @@ issue.addEventListener('click', async () => {
     draft = undefined;
     message(current.fromPdf
       ? 'Ficha registrada. Regresa al PDF maestro y pulsa «Guardar copia» para guardar la ficha del cliente.'
-      : 'Referencia registrada. Usa «Guardar copia» para descargar el PDF del cliente.');
+      : 'Referencia registrada. Usa «Descargar ficha definitiva» para obtener el PDF del cliente.');
     await loadHistory();
   } catch (error) {
     if (auth === session) message(error.message, true);
