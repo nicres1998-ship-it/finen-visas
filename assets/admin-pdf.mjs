@@ -92,14 +92,35 @@ export async function readFicha(bytes) {
   if (issued) {
     throw Error('Este PDF ya tiene el botón «Verificar ficha». Puedes enviarlo al cliente o consultar su folio en Referencias.');
   }
+  const chromeMaster = await inspectMaster(document);
+  const fields = Object.fromEntries(Object.keys(labels).map(key => [key, form.getTextField(key).getText() ?? '']));
+  return { ...validateFields(fields), chromeMaster, bytes, hash: await sha256(bytes) };
+}
+
+export async function inspectMaster(document) {
+  const [page, ...rest] = document.getPages();
   const normalized = page && !rest.length ? await templateFingerprint(page, true) : '';
   const chromeMaster = normalized === MASTER_CHROME;
   if (!page || rest.length || (!chromeMaster && normalized !== MASTER_DECODED
       && await templateFingerprint(page) !== MASTER)) {
     throw Error('No pude reconocer esta versión de la ficha editable. Adjunta ese mismo PDF en el chat para revisar cómo lo guardó tu lector.');
   }
-  const fields = Object.fromEntries(Object.keys(labels).map(key => [key, form.getTextField(key).getText() ?? '']));
-  return { ...validateFields(fields), chromeMaster, bytes, hash: await sha256(bytes) };
+  if (!Object.keys(labels).every(key => document.getForm().getFieldMaybe(key) instanceof PDFLib.PDFTextField)) {
+    throw Error('Selecciona una ficha maestra editable de FINEN.');
+  }
+  return chromeMaster;
+}
+
+export async function fillMaster(bytes, fields) {
+  const document = await PDFLib.PDFDocument.load(bytes, { updateMetadata: false });
+  const chromeMaster = await inspectMaster(document);
+  const form = document.getForm();
+  for (const key of Object.keys(labels)) form.getTextField(key).setText(fields[key]);
+  return { bytes: await document.save(), chromeMaster };
+}
+
+export async function validateMaster(bytes) {
+  await inspectMaster(await PDFLib.PDFDocument.load(bytes, { updateMetadata: false }));
 }
 
 export function validateFields(fields) {

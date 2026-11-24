@@ -1,6 +1,8 @@
 const base = 'https://upbcsdocsoicujeylpmx.supabase.co';
 const key = 'sb_publishable_wOqfHlkJATss_6Ow_6jgaw_GepOkl6s';
-import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256 } from './admin-pdf.mjs?v=chrome1';
+import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256, fillMaster, validateMaster } from './admin-pdf.mjs?v=expediente1';
+
+import { localMaster } from './admin-template.mjs';
 
 const byId = id => document.getElementById(id);
 const login = byId('login');
@@ -39,6 +41,110 @@ function message(text, error = false) {
 
 const verifyLink = byId('verify-link');
 let draft;
+const editor = byId('editor');
+const draftForm = byId('draft-form');
+const newReference = byId('new-reference');
+const templatePicker = byId('template');
+let masterBytes;
+let preparingDraft = false;
+const requiredFields = new Set(['folio', 'fecha', 'vence', 'contrato', 'nombre', 'concepto', 'importe', 'letra']);
+for (const [name, label] of Object.entries(labels)) {
+  if (name === 'folio_pie') continue;
+  const entry = document.createElement('label');
+  entry.textContent = label;
+  const input = document.createElement('input');
+  input.name = name;
+  input.maxLength = name === 'folio' ? 24 : 200;
+  input.required = requiredFields.has(name);
+  if (name === 'fecha' || name === 'vence') input.type = 'date';
+  if (name === 'folio') input.pattern = 'RP-[0-9]{4}-[0-9]{1,16}';
+  if (name === 'importe') input.inputMode = 'decimal';
+  entry.append(input);
+  byId('draft-fields').append(entry);
+}
+function today() {
+  return new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
+}
+draftForm.elements.fecha.value = today();
+byId('open-login').onclick = () => {
+  editor.hidden = true;
+  login.hidden = false;
+  login.elements.email.focus();
+};
+
+function templateState() {
+  byId('template-status').textContent = masterBytes
+    ? 'Plantilla disponible en este navegador.'
+    : 'Selecciona la ficha maestra una vez. El archivo se guarda solo en este navegador.';
+  if (draft && !masterBytes) byId('template-settings').open = true;
+}
+
+templatePicker.addEventListener('change', async () => {
+  try {
+    const file = templatePicker.files[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) throw Error('La ficha maestra supera 25 MB.');
+    const bytes = await file.arrayBuffer();
+    await validateMaster(bytes);
+    await localMaster(bytes);
+    masterBytes = bytes;
+    templateState();
+    byId('template-settings').open = false;
+    if (draft && session) await prepareDraft();
+  } catch (error) {
+    message(error.message, true);
+  } finally { templatePicker.value = ''; }
+});
+
+async function prepareDraft() {
+  if (!draft || !session || preparingDraft) return;
+  preparingDraft = true;
+  try {
+    const current = draft;
+    const auth = session;
+    const hash = await sha256(new TextEncoder().encode('FINEN:maestro:v1:' + JSON.stringify(current.fields)));
+    if (auth !== session || current !== draft) return;
+    preview({ ...current, hash, fromDraft: true });
+    templateState();
+    issue.disabled = !masterBytes;
+    message(masterBytes ? 'Revisa los datos y pulsa «Registrar ficha».' : 'Configura la ficha maestra para preparar la copia del cliente.');
+  } finally { preparingDraft = false; }
+}
+
+draftForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  try {
+    const fields = Object.fromEntries(Object.keys(labels).map(key => {
+      const value = draftForm.elements[key === 'folio_pie' ? 'folio' : key].value.trim();
+      return [key, key === 'fecha' || key === 'vence' ? value.split('-').reverse().join('/') : value];
+    }));
+    draft = validateFields(fields);
+    editor.hidden = true;
+    login.hidden = Boolean(session);
+    if (session) {
+      clearFicha();
+      await prepareDraft();
+    } else {
+      message('Los datos están listos. Inicia sesión para revisarlos y registrar la ficha.');
+      login.elements.email.focus();
+    }
+  } catch (error) { message(error.message, true); }
+});
+
+newReference.addEventListener('click', () => {
+  const registeredFolio = ficha?.fields.folio ?? '';
+  const parts = /^(RP-\d{4}-)(\d+)$/.exec(registeredFolio);
+  clearFicha();
+  draft = undefined;
+  draftForm.reset();
+  if (parts) draftForm.elements.folio.value = parts[1] + String(BigInt(parts[2]) + 1n).padStart(parts[2].length, '0');
+  draftForm.elements.fecha.value = today();
+  editor.hidden = false;
+  editor.scrollIntoView({ block: 'start' });
+  draftForm.elements.folio.focus();
+  message('');
+});
+
 const incoming = new URLSearchParams(location.hash.slice(1)).get('registrar');
 if (incoming !== null) {
   history.replaceState(history.state, '', location.pathname + location.search);
@@ -51,6 +157,8 @@ if (incoming !== null) {
       return [name, value];
     }));
     draft = validateFields(fields);
+    editor.hidden = true;
+    login.hidden = false;
     message('Ficha recibida desde el PDF. Inicia sesión para confirmar el registro.');
   } catch {
     message('No se pudieron leer los datos del PDF. Abre la ficha y pulsa «Registrar ficha en FINEN» de nuevo.', true);
@@ -87,10 +195,12 @@ function clearFicha() {
   download.hidden = true;
   verifyLink.hidden = true;
   verifyLink.removeAttribute('href');
+  newReference.hidden = true;
 }
 
 function reset() {
   session = undefined;
+  byId('open-login').hidden = false;
   historyRequest++;
   page = 0;
   pdf.value = '';
@@ -99,7 +209,9 @@ function reset() {
   byId('search').value = '';
   byId('panel').hidden = true;
   byId('logout').hidden = true;
-  login.hidden = false;
+  login.hidden = !draft;
+  editor.hidden = Boolean(draft);
+  if (!draft) { draftForm.reset(); draftForm.elements.fecha.value = today(); }
 }
 
 login.addEventListener('submit', async event => {
@@ -115,15 +227,14 @@ login.addEventListener('submit', async event => {
       throw Error('Acceso reservado a administración.');
     }
     session = result.access_token;
+    byId('open-login').hidden = true;
     login.hidden = true;
     byId('logout').hidden = false;
     byId('panel').hidden = false;
     message('');
-    if (draft) {
-      const hash = await sha256(new TextEncoder().encode('FINEN:maestro:v1:' + JSON.stringify(draft.fields)));
-      preview({ ...draft, hash });
-      message('Revisa los datos de la ficha y pulsa «Registrar ficha».');
-    }
+    try { masterBytes = await localMaster(); } catch { masterBytes = undefined; }
+    templateState();
+    await prepareDraft();
     await loadHistory();
   } catch (error) {
     reset();
@@ -169,7 +280,8 @@ issue.addEventListener('click', async () => {
   let completed = false;
   message(current.bytes ? 'Preparando PDF y registrando la referencia…' : 'Registrando la referencia…');
   try {
-    let bytes = current.bytes && await prepareDeliveryPdf(current, current.token);
+    const prepared = current.fromDraft ? { ...current, ...await fillMaster(masterBytes, current.fields) } : current;
+    let bytes = await prepareDeliveryPdf(prepared, current.token);
     if (auth !== session) return;
     const row = await rpc('finen_registrar_ficha_pdf', {
       p_plantilla_sha256: MASTER,
@@ -184,7 +296,7 @@ issue.addEventListener('click', async () => {
     if (row?.folio !== current.fields.folio || !/^[A-Za-z0-9_-]{24,128}$/.test(row?.token_qr ?? '')) {
       throw Error('El servidor devolvió una referencia que no coincide con la ficha.');
     }
-    if (bytes && row.token_qr !== current.token) bytes = await prepareDeliveryPdf(current, row.token_qr);
+    if (bytes && row.token_qr !== current.token) bytes = await prepareDeliveryPdf(prepared, row.token_qr);
     if (auth !== session) return;
     if (bytes) {
       downloadUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
@@ -195,9 +307,9 @@ issue.addEventListener('click', async () => {
     verifyLink.href = verifier(row.token_qr, row.folio);
     verifyLink.hidden = false;
     completed = true;
+    newReference.hidden = false;
     draft = undefined;
-    message(bytes ? 'Referencia registrada. El PDF definitivo está listo para descargar.'
-      : 'Referencia registrada. Ya puedes guardar el PDF desde tu lector y enviarlo al cliente.');
+    message('Referencia registrada. Usa «Guardar copia» para descargar el PDF del cliente.');
     await loadHistory();
   } catch (error) {
     if (auth === session) message(error.message, true);
