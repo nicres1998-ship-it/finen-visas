@@ -217,3 +217,30 @@ export async function prepareDeliveryPdf({ bytes, fields, chromeMaster }, token)
   page.node.addAnnot(context.register(link));
   return document.save({ updateFieldAppearances: false });
 }
+
+
+export async function customerCopy(bytes) {
+  const { PDFDocument, PDFDict, PDFName, PDFString, PDFHexString, rgb } = PDFLib;
+  const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+  const form = doc.getForm();
+  const page = doc.getPage(0);
+  for (const field of form.getFields()) {
+    if (!(field instanceof PDFLib.PDFButton)) continue;
+    form.removeField(field);
+  }
+  const annotations = page.node.Annots();
+  for (let i = (annotations?.size() ?? 0) - 1; i >= 0; i--) {
+    const annotation = annotations.lookup(i);
+    if (!(annotation instanceof PDFDict)) continue;
+    const action = annotation.lookup(PDFName.of('A'));
+    if (!(action instanceof PDFDict)) continue;
+    const uri = action.lookup(PDFName.of('URI'));
+    if (!(uri instanceof PDFString || uri instanceof PDFHexString)) continue;
+    if (uri.decodeText().startsWith('https://finenvisas.com.mx/admin.html')) {
+      annotations.remove(i);
+      page.drawRectangle({ x: 346, y: 7, width: 134, height: 20, color: rgb(.9294, .9725, .9725) });
+    }
+  }
+  form.flatten({ updateFieldAppearances: false });
+  return doc.save({ updateFieldAppearances: false });
+}

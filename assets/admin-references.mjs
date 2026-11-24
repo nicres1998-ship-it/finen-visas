@@ -1,6 +1,6 @@
 const base = 'https://upbcsdocsoicujeylpmx.supabase.co';
 const key = 'sb_publishable_wOqfHlkJATss_6Ow_6jgaw_GepOkl6s';
-import { labels, MASTER, readFicha, verifier, validateFields, sha256, fillMaster, validateMaster } from './admin-pdf.mjs?v=copiaregistro1';
+import { labels, MASTER, readFicha, verifier, validateFields, sha256, fillMaster, validateMaster, customerCopy } from './admin-pdf.mjs?v=cliente1';
 
 import { localMaster, localCopy } from './admin-template.mjs?v=expedientes2';
 
@@ -548,7 +548,9 @@ function renderRow(row) {
           message('La copia de este expediente no está guardada en este navegador. Busca el PDF que se descargó al registrarlo.', true);
           return;
         }
-        const url = URL.createObjectURL(new Blob([bytes], {type: 'application/pdf'}));
+        const delivery = await customerCopy(bytes);
+        if (auth !== session) return;
+        const url = URL.createObjectURL(new Blob([delivery], {type: 'application/pdf'}));
         const link = document.createElement('a');
         link.href = url;
         link.download = copyName(row.cliente, row.folio);
