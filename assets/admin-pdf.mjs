@@ -6,8 +6,8 @@ const labels = {
 };
 export { labels };
 
-export const verifier = token => new URL(
-  '/verificar.html#token=' + encodeURIComponent(token), 'https://finenvisas.com.mx'
+export const verifier = (token, folio) => new URL(
+  '/verificar.html#' + new URLSearchParams({ token, folio }), 'https://finenvisas.com.mx'
 ).href;
 
 export async function sha256(bytes) {
@@ -86,40 +86,33 @@ export async function readFicha(bytes) {
   return { bytes, fields, issue, due, amount: amount.replaceAll(',', ''), hash: await sha256(bytes) };
 }
 
-export async function replaceQr({ bytes }, qr, token) {
+export async function prepareDeliveryPdf({ bytes, fields }, token) {
   const { PDFDict, PDFDocument, PDFName, PDFString, StandardFonts, rgb } = PDFLib;
   const document = await PDFDocument.load(bytes, { updateMetadata: false });
   const page = document.getPage(0);
-  const url = verifier(token);
-  const code = qr(0, 'M');
-  code.addData(url);
-  code.make();
-  const count = code.getModuleCount();
-  const dimension = count + 8;
-  const commands = [`1 g 0 0 ${dimension} ${dimension} re f`, '0 g'];
-  for (let row = 0; row < count; row++) {
-    for (let column = 0; column < count; column++) {
-      if (code.isDark(row, column)) commands.push(`${column + 4} ${count - row + 3} 1 1 re`);
-    }
-  }
-  commands.push('f');
+  const url = verifier(token, fields.folio);
   const context = document.context;
-  const stream = context.flateStream(commands.join('\n'), {
-    Type: 'XObject', Subtype: 'Form', BBox: [0, 0, dimension, dimension],
-    Matrix: [1 / dimension, 0, 0, 1 / dimension, 0, 0], Resources: {}
+  const empty = context.flateStream('', {
+    Type: 'XObject', Subtype: 'Form', BBox: [0, 0, 1, 1], Resources: {}
   });
   const images = page.node.Resources().lookup(PDFName.of('XObject'), PDFDict);
-  if (!images.has(PDFName.of(QR_IMAGE))) throw Error('Falta el QR original de la ficha.');
-  images.set(PDFName.of(QR_IMAGE), context.register(stream));
-  // El botón queda entre la leyenda del QR y la franja de contacto.
-  const button = { x: 269, y: 85.25, width: 96, height: 10.75 };
-  const label = 'Verificar QR';
+  if (!images.has(PDFName.of(QR_IMAGE))) throw Error('Falta el espacio de verificación de la ficha.');
+  images.set(PDFName.of(QR_IMAGE), context.register(empty));
+
+  const button = { x: 245, y: 152, width: 140, height: 25 };
+  const label = 'Verificar ficha';
   const font = await document.embedFont(StandardFonts.HelveticaBold);
-  const size = 7.5;
+  const size = 11;
+  const ink = rgb(.07, .29, .37);
+  const lines = ['Antes de pagar, compara el importe y', 'los datos de depósito con el sitio de FINEN.', 'En papel: finenvisas.com.mx/verificar.html'];
+  lines.forEach((line, i) => page.drawText(line, {
+    x: button.x + (button.width - font.widthOfTextAtSize(line, 6.3)) / 2,
+    y: 140 - i * 9, size: 6.3, font, color: ink
+  }));
   page.drawRectangle({ ...button, color: rgb(.07, .29, .37) });
   page.drawText(label, {
     x: button.x + (button.width - font.widthOfTextAtSize(label, size)) / 2,
-    y: button.y + 2.45, size, font, color: rgb(1, 1, 1)
+    y: button.y + 8.5, size, font, color: rgb(1, 1, 1)
   });
   const link = context.obj({
     Type: 'Annot', Subtype: 'Link', P: page.ref, Border: [0, 0, 0],

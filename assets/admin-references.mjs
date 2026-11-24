@@ -1,6 +1,6 @@
 const base = 'https://upbcsdocsoicujeylpmx.supabase.co';
 const key = 'sb_publishable_wOqfHlkJATss_6Ow_6jgaw_GepOkl6s';
-import { labels, MASTER, readFicha, replaceQr, verifier } from './admin-pdf.mjs';
+import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier } from './admin-pdf.mjs';
 
 const byId = id => document.getElementById(id);
 const login = byId('login');
@@ -134,7 +134,7 @@ issue.addEventListener('click', async () => {
   let completed = false;
   message('Preparando PDF y registrando la referencia…');
   try {
-    let bytes = await replaceQr(current, window.qrcode, current.token);
+    let bytes = await prepareDeliveryPdf(current, current.token);
     if (auth !== session) return;
     const row = await rpc('finen_registrar_ficha_pdf', {
       p_plantilla_sha256: MASTER,
@@ -149,7 +149,7 @@ issue.addEventListener('click', async () => {
     if (row?.folio !== current.fields.folio || !/^[A-Za-z0-9_-]{24,128}$/.test(row?.token_qr ?? '')) {
       throw Error('El servidor devolvió una referencia que no coincide con la ficha.');
     }
-    if (row.token_qr !== current.token) bytes = await replaceQr(current, window.qrcode, row.token_qr);
+    if (row.token_qr !== current.token) bytes = await prepareDeliveryPdf(current, row.token_qr);
     if (auth !== session) return;
     downloadUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
     download.href = downloadUrl;
@@ -200,7 +200,7 @@ function renderRow(row) {
   tr.insertCell().append(actions);
   if (row.token_qr) {
     const link = document.createElement('a');
-    link.href = verifier(row.token_qr);
+    link.href = verifier(row.token_qr, row.folio);
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.textContent = 'Verificar';
