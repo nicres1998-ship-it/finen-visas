@@ -42,12 +42,7 @@ begin
     'moneda', datos->'moneda',
     'fecha_emision', datos->'fecha_emision',
     'fecha_vencimiento', datos->'fecha_vencimiento',
-    'estatus', ficha.estatus,
-    'puede_pagar', coalesce(
-      ficha.estatus::text = 'PENDIENTE'
-      and (datos->>'fecha_vencimiento')::date >= (now() at time zone 'America/Mexico_City')::date,
-      false
-    )
+    'estatus', ficha.estatus
   );
 end
 $$;

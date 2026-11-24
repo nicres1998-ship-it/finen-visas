@@ -43,7 +43,6 @@ function clearFicha() {
   const fields = byId('fields');
   fields.replaceChildren();
   fields.hidden = true;
-  byId('bank').textContent = '';
   if (downloadUrl) URL.revokeObjectURL(downloadUrl);
   downloadUrl = undefined;
   download.removeAttribute('href');
@@ -119,12 +118,6 @@ pdf.addEventListener('change', async () => {
     }
     fields.hidden = false;
     message('');
-    const approval = await rpc('finen_validar_plantilla_referencia', { p_plantilla_sha256: MASTER });
-    if (auth !== session || pdf.files[0] !== file) return;
-    if (approval?.autorizada !== true) {
-      throw Error('La plantilla aún no tiene una validación bancaria vigente.');
-    }
-    byId('bank').textContent = 'Cuentas de la ficha cotejadas con la autorización bancaria vigente.';
     ficha = { ...parsed, token: crypto.randomUUID().replaceAll('-', '') };
     issue.disabled = false;
   } catch (error) {

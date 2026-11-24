@@ -3,41 +3,14 @@ begin;
 create schema if not exists finen_privado;
 revoke all on schema finen_privado from public, anon, authenticated;
 
-create table if not exists finen_privado.plantillas_pago (
-  plantilla_sha256 text primary key check (plantilla_sha256 ~ '^[0-9a-f]{64}$'),
-  cuentas jsonb not null check (jsonb_typeof(cuentas) in ('object', 'array') and cuentas not in ('{}', '[]')),
-  evidencia text not null check (btrim(evidencia) <> ''),
-  vigente_hasta date not null,
-  revocada boolean not null default false
-);
-
 create table if not exists finen_privado.fichas_importadas (
   folio text primary key,
   pdf_sha256 text not null check (pdf_sha256 ~ '^[0-9a-f]{64}$'),
-  plantilla_sha256 text not null references finen_privado.plantillas_pago,
+  plantilla_sha256 text not null check (plantilla_sha256 ~ '^[0-9a-f]{64}$'),
   campos jsonb not null,
   registrado_por uuid not null,
   registrado_en timestamptz not null default now()
 );
-
-create or replace function public.finen_validar_plantilla_referencia(p_plantilla_sha256 text)
-returns jsonb
-language plpgsql
-stable
-security definer
-set search_path = ''
-as $$
-begin
-  if auth.uid() is null or public.finen_rol_actual()::text is distinct from 'ADMIN' then
-    raise exception 'Acceso reservado a administración' using errcode = '42501';
-  end if;
-  return jsonb_build_object('autorizada', exists (
-    select 1 from finen_privado.plantillas_pago
-    where plantilla_sha256 = p_plantilla_sha256 and not revocada
-      and vigente_hasta >= (now() at time zone 'America/Mexico_City')::date
-  ));
-end
-$$;
 
 create or replace function public.finen_registrar_ficha_pdf(
   p_plantilla_sha256 text, p_pdf_sha256 text, p_campos jsonb,
@@ -50,9 +23,7 @@ set search_path = ''
 as $$
 declare
   folio_pdf text := p_campos->>'folio';
-  aprobacion finen_privado.plantillas_pago;
   anterior finen_privado.fichas_importadas;
-  registro jsonb;
   emitida jsonb;
   devuelto jsonb;
   token_nuevo uuid;
@@ -76,12 +47,8 @@ begin
   end if;
   token_nuevo := p_token_qr::uuid;
 
-  select * into aprobacion from finen_privado.plantillas_pago
-  where plantilla_sha256 = p_plantilla_sha256 and not revocada
-    and vigente_hasta >= (now() at time zone 'America/Mexico_City')::date
-  for share;
-  if not found then
-    raise exception 'La plantilla no tiene validación bancaria vigente' using errcode = '22023';
+  if p_plantilla_sha256 is distinct from '0cc1c6a5f328bbe4213e742cf1343f09f68abebed9281c0a337f014c4360ab98' then
+    raise exception 'La ficha no coincide con la plantilla de FINEN' using errcode = '22023';
   end if;
 
   perform pg_advisory_xact_lock(hashtextextended(folio_pdf, 0));
@@ -123,23 +90,13 @@ begin
     raise exception 'No se pudo identificar la referencia recién creada';
   end if;
 
-  execute pg_catalog.format(
-    'select pg_catalog.to_jsonb(public.finen_comprobar_datos(p_token => %L, p_cliente => %L, p_folio => %L))',
-    token_nuevo, p_campos->>'nombre', folio_pdf
-  ) into registro;
-  if registro->'cuentas' is distinct from aprobacion.cuentas then
-    raise exception 'Las cuentas registradas no coinciden con la autorización de la ficha' using errcode = '22023';
-  end if;
-
   insert into finen_privado.fichas_importadas (folio, pdf_sha256, plantilla_sha256, campos, registrado_por)
   values (folio_pdf, p_pdf_sha256, p_plantilla_sha256, p_campos, auth.uid());
   return devuelto;
 end
 $$;
 
-revoke all on function public.finen_validar_plantilla_referencia(text) from public, anon;
 revoke all on function public.finen_registrar_ficha_pdf(text, text, jsonb, date, date, numeric, text) from public, anon;
-grant execute on function public.finen_validar_plantilla_referencia(text) to authenticated;
 grant execute on function public.finen_registrar_ficha_pdf(text, text, jsonb, date, date, numeric, text) to authenticated;
 
 commit;

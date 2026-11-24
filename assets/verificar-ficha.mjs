@@ -73,10 +73,8 @@ async function verify() {
       return;
     }
     if (!row?.folio || !row.estatus) throw Error('Respuesta inválida');
-    const payable = row.puede_pagar === true && row.estatus === 'PENDIENTE';
     show('valid', 'Ficha de pago verificada',
-      payable ? 'Puedes realizar tu pago.' : 'Esta referencia no admite pagos.',
-      'FINEN · Verificada');
+      'Esta referencia fue emitida por FINEN.', 'FINEN · Verificada');
     showDetails(row);
   } catch {
     if (visit !== verification) return;
