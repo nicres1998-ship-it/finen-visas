@@ -17,8 +17,8 @@ export async function sha256(bytes) {
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function templateFingerprint(page) {
-  const { PDFArray, PDFDict, PDFName, PDFRawStream, PDFRef } = PDFLib;
+export async function templateFingerprint(page, normalizeCompression = false) {
+  const { PDFArray, PDFDict, PDFName, PDFRawStream, PDFRef, decodePDFRawStream } = PDFLib;
   const context = page.node.context;
   const cache = new Map();
   async function describe(object, ancestors = []) {
@@ -29,6 +29,12 @@ export async function templateFingerprint(page) {
       return cache.get(key);
     }
     if (object instanceof PDFRawStream) {
+      if (normalizeCompression && object.dict.get(PDFName.of('Filter'))?.toString() === '/FlateDecode'
+          && !object.dict.has(PDFName.of('DecodeParms'))) {
+        const metadata = object.dict.clone();
+        metadata.delete(PDFName.of('Filter'));
+        return [await describe(metadata, ancestors), await sha256(decodePDFRawStream(object).decode())];
+      }
       return [await describe(object.dict, ancestors), await sha256(object.getContents())];
     }
     if (object instanceof PDFDict) {
@@ -51,6 +57,7 @@ export async function templateFingerprint(page) {
 }
 
 export const MASTER = '0cc1c6a5f328bbe4213e742cf1343f09f68abebed9281c0a337f014c4360ab98';
+const MASTER_DECODED = '666542c8c01dca2d818de977b5698a56c46330df6086e7df001726004cdcd31a';
 const QR_IMAGE = 'fzImg8';
 
 function normalizeDate(raw) {
@@ -66,10 +73,27 @@ function normalizeDate(raw) {
 export async function readFicha(bytes) {
   const document = await PDFLib.PDFDocument.load(bytes, { updateMetadata: false });
   const [page, ...rest] = document.getPages();
-  if (!page || rest.length || await templateFingerprint(page) !== MASTER) {
-    throw Error('El diseño de este PDF no coincide con la ficha maestra.');
-  }
   const form = document.getForm();
+  if (form.getFields().length === 0) {
+    throw Error('Este PDF quedó como copia de impresión. Abre la ficha maestra, llénala y usa Archivo → Guardar como en tu lector de PDF. Evita «Guardar copia» y «Imprimir», porque quitan los campos editables.');
+  }
+  const { PDFDict, PDFName, PDFString, PDFHexString } = PDFLib;
+  const issued = page?.node.Annots()?.asArray().some(ref => {
+    const annotation = document.context.lookup(ref);
+    if (!(annotation instanceof PDFDict)) return false;
+    const action = annotation.lookup(PDFName.of('A'));
+    if (!(action instanceof PDFDict)) return false;
+    const uri = action.lookup(PDFName.of('URI'));
+    return (uri instanceof PDFString || uri instanceof PDFHexString)
+      && uri.decodeText().startsWith('https://finenvisas.com.mx/verificar.html#token=');
+  });
+  if (issued) {
+    throw Error('Este PDF ya tiene el botón «Verificar ficha». Puedes enviarlo al cliente o consultar su folio en Referencias.');
+  }
+  if (!page || rest.length || (await templateFingerprint(page) !== MASTER
+      && await templateFingerprint(page, true) !== MASTER_DECODED)) {
+    throw Error('No pude reconocer esta versión de la ficha editable. Adjunta ese mismo PDF en el chat para revisar cómo lo guardó tu lector.');
+  }
   const fields = Object.fromEntries(Object.keys(labels).map(key => [key, form.getTextField(key).getText() ?? '']));
   if (!['folio', 'contrato', 'nombre', 'concepto', 'importe', 'letra'].every(key => fields[key].trim())) {
     throw Error('Completa el folio, contrato, titular, concepto e importe en el PDF.');
