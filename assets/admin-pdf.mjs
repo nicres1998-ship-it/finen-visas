@@ -83,13 +83,16 @@ export async function readFicha(bytes) {
       || !Number.isFinite(Number(amount.replaceAll(',', ''))) || Number(amount.replaceAll(',', '')) <= 0) {
     throw Error('Revisa el importe de la ficha.');
   }
-  return { document, page, fields, issue, due, amount: amount.replaceAll(',', ''), hash: await sha256(bytes) };
+  return { bytes, fields, issue, due, amount: amount.replaceAll(',', ''), hash: await sha256(bytes) };
 }
 
-export async function replaceQr({ document, page }, qr, token) {
-  const { PDFDict, PDFName } = PDFLib;
+export async function replaceQr({ bytes }, qr, token) {
+  const { PDFDict, PDFDocument, PDFName, PDFString, StandardFonts, rgb } = PDFLib;
+  const document = await PDFDocument.load(bytes, { updateMetadata: false });
+  const page = document.getPage(0);
+  const url = verifier(token);
   const code = qr(0, 'M');
-  code.addData(verifier(token));
+  code.addData(url);
   code.make();
   const count = code.getModuleCount();
   const dimension = count + 8;
@@ -108,5 +111,22 @@ export async function replaceQr({ document, page }, qr, token) {
   const images = page.node.Resources().lookup(PDFName.of('XObject'), PDFDict);
   if (!images.has(PDFName.of(QR_IMAGE))) throw Error('Falta el QR original de la ficha.');
   images.set(PDFName.of(QR_IMAGE), context.register(stream));
+  // El botón queda entre la leyenda del QR y la franja de contacto.
+  const button = { x: 269, y: 85.25, width: 96, height: 10.75 };
+  const label = 'Verificar QR';
+  const font = await document.embedFont(StandardFonts.HelveticaBold);
+  const size = 7.5;
+  page.drawRectangle({ ...button, color: rgb(.07, .29, .37) });
+  page.drawText(label, {
+    x: button.x + (button.width - font.widthOfTextAtSize(label, size)) / 2,
+    y: button.y + 2.45, size, font, color: rgb(1, 1, 1)
+  });
+  const link = context.obj({
+    Type: 'Annot', Subtype: 'Link', P: page.ref, Border: [0, 0, 0],
+    Rect: [button.x, button.y, button.x + button.width, button.y + button.height],
+    Contents: PDFString.of(label),
+    A: { S: 'URI', URI: PDFString.of(url) }
+  });
+  page.node.addAnnot(context.register(link));
   return document.save({ updateFieldAppearances: false });
 }
