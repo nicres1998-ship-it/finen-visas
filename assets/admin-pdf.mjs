@@ -96,6 +96,10 @@ export async function readFicha(bytes) {
     throw Error('No pude reconocer esta versión de la ficha editable. Adjunta ese mismo PDF en el chat para revisar cómo lo guardó tu lector.');
   }
   const fields = Object.fromEntries(Object.keys(labels).map(key => [key, form.getTextField(key).getText() ?? '']));
+  return { ...validateFields(fields), bytes, hash: await sha256(bytes) };
+}
+
+export function validateFields(fields) {
   if (!['folio', 'contrato', 'nombre', 'concepto', 'importe', 'letra'].every(key => fields[key].trim())) {
     throw Error('Completa el folio, contrato, titular, concepto e importe en el PDF.');
   }
@@ -110,7 +114,7 @@ export async function readFicha(bytes) {
       || !Number.isFinite(Number(amount.replaceAll(',', ''))) || Number(amount.replaceAll(',', '')) <= 0) {
     throw Error('Revisa el importe de la ficha.');
   }
-  return { bytes, fields, issue, due, amount: amount.replaceAll(',', ''), hash: await sha256(bytes) };
+  return { fields, issue, due, amount: amount.replaceAll(',', '') };
 }
 
 export async function prepareDeliveryPdf({ bytes, fields }, token) {

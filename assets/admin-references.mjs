@@ -1,6 +1,6 @@
 const base = 'https://upbcsdocsoicujeylpmx.supabase.co';
 const key = 'sb_publishable_wOqfHlkJATss_6Ow_6jgaw_GepOkl6s';
-import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier } from './admin-pdf.mjs?v=qr20261124';
+import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256 } from './admin-pdf.mjs?v=maestro1';
 
 const byId = id => document.getElementById(id);
 const login = byId('login');
@@ -37,6 +37,44 @@ function message(text, error = false) {
   status.toggleAttribute('data-error', error);
 }
 
+const verifyLink = byId('verify-link');
+let draft;
+const incoming = new URLSearchParams(location.hash.slice(1)).get('registrar');
+if (incoming !== null) {
+  history.replaceState(history.state, '', location.pathname + location.search);
+  try {
+    if (incoming.length > 4500) throw Error('Datos demasiado largos');
+    const source = JSON.parse(incoming);
+    const fields = Object.fromEntries(Object.keys(labels).map(name => {
+      const value = source?.[name];
+      if (typeof value !== 'string' || value.length > 350) throw Error('Datos incompletos');
+      return [name, value];
+    }));
+    draft = validateFields(fields);
+    message('Ficha recibida desde el PDF. Inicia sesión para confirmar el registro.');
+  } catch {
+    message('No se pudieron leer los datos del PDF. Abre la ficha y pulsa «Registrar ficha en FINEN» de nuevo.', true);
+  }
+}
+
+function preview(parsed) {
+  const fields = byId('fields');
+  fields.replaceChildren();
+  for (const [name, label] of Object.entries(labels)) {
+    const entry = document.createElement('div');
+    const term = document.createElement('dt');
+    const value = document.createElement('dd');
+    term.textContent = label;
+    value.textContent = parsed.fields[name] || '—';
+    entry.append(term, value);
+    fields.append(entry);
+  }
+  fields.hidden = false;
+  ficha = { ...parsed, token: crypto.randomUUID().replaceAll('-', '') };
+  issue.textContent = parsed.bytes ? 'Guardar ficha' : 'Confirmar registro';
+  issue.disabled = false;
+}
+
 function clearFicha() {
   ficha = undefined;
   issue.disabled = true;
@@ -47,6 +85,8 @@ function clearFicha() {
   downloadUrl = undefined;
   download.removeAttribute('href');
   download.hidden = true;
+  verifyLink.hidden = true;
+  verifyLink.removeAttribute('href');
 }
 
 function reset() {
@@ -79,6 +119,11 @@ login.addEventListener('submit', async event => {
     byId('logout').hidden = false;
     byId('panel').hidden = false;
     message('');
+    if (draft) {
+      const hash = await sha256(new TextEncoder().encode('FINEN:maestro:v1:' + JSON.stringify(draft.fields)));
+      preview({ ...draft, hash });
+      message('Revisa los datos de la ficha y pulsa «Confirmar registro».');
+    }
     await loadHistory();
   } catch (error) {
     reset();
@@ -91,6 +136,7 @@ login.addEventListener('submit', async event => {
 
 byId('logout').addEventListener('click', () => {
   const auth = session;
+  draft = undefined;
   reset();
   message('Sesión cerrada.');
   request('/auth/v1/logout', {}, auth).catch(() => {});
@@ -106,20 +152,9 @@ pdf.addEventListener('change', async () => {
     if (file.size > 25 * 1024 * 1024) throw Error('La ficha supera 25 MB.');
     const parsed = await readFicha(await file.arrayBuffer());
     if (auth !== session || pdf.files[0] !== file) return;
-    const fields = byId('fields');
-    for (const [name, label] of Object.entries(labels)) {
-      const entry = document.createElement('div');
-      const term = document.createElement('dt');
-      const value = document.createElement('dd');
-      term.textContent = label;
-      value.textContent = parsed.fields[name] || '—';
-      entry.append(term, value);
-      fields.append(entry);
-    }
-    fields.hidden = false;
+    draft = undefined;
+    preview(parsed);
     message('');
-    ficha = { ...parsed, token: crypto.randomUUID().replaceAll('-', '') };
-    issue.disabled = false;
   } catch (error) {
     if (auth === session && pdf.files[0] === file) message(error.message, true);
   }
@@ -132,9 +167,9 @@ issue.addEventListener('click', async () => {
   issue.disabled = true;
   pdf.disabled = true;
   let completed = false;
-  message('Preparando PDF y registrando la referencia…');
+  message(current.bytes ? 'Preparando PDF y registrando la referencia…' : 'Registrando la referencia…');
   try {
-    let bytes = await prepareDeliveryPdf(current, current.token);
+    let bytes = current.bytes && await prepareDeliveryPdf(current, current.token);
     if (auth !== session) return;
     const row = await rpc('finen_registrar_ficha_pdf', {
       p_plantilla_sha256: MASTER,
@@ -149,14 +184,20 @@ issue.addEventListener('click', async () => {
     if (row?.folio !== current.fields.folio || !/^[A-Za-z0-9_-]{24,128}$/.test(row?.token_qr ?? '')) {
       throw Error('El servidor devolvió una referencia que no coincide con la ficha.');
     }
-    if (row.token_qr !== current.token) bytes = await prepareDeliveryPdf(current, row.token_qr);
+    if (bytes && row.token_qr !== current.token) bytes = await prepareDeliveryPdf(current, row.token_qr);
     if (auth !== session) return;
-    downloadUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-    download.href = downloadUrl;
-    download.download = row.folio + '.pdf';
-    download.hidden = false;
+    if (bytes) {
+      downloadUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      download.href = downloadUrl;
+      download.download = row.folio + '.pdf';
+      download.hidden = false;
+    }
+    verifyLink.href = verifier(row.token_qr, row.folio);
+    verifyLink.hidden = false;
     completed = true;
-    message('Referencia registrada. El PDF definitivo está listo para descargar.');
+    draft = undefined;
+    message(bytes ? 'Referencia registrada. El PDF definitivo está listo para descargar.'
+      : 'Referencia registrada. Ya puedes guardar el PDF desde tu lector y enviarlo al cliente.');
     await loadHistory();
   } catch (error) {
     if (auth === session) message(error.message, true);
