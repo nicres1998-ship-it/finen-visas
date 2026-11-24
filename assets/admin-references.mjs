@@ -90,9 +90,9 @@ function templateState() {
   if (draft && !masterBytes) byId('template-settings').open = true;
 }
 
-templatePicker.addEventListener('change', async () => {
+async function chooseMaster(picker) {
   try {
-    const file = templatePicker.files[0];
+    const file = picker.files[0];
     if (!file) return;
     if (file.size > 25 * 1024 * 1024) throw Error('La ficha maestra supera 25 MB.');
     const bytes = await file.arrayBuffer();
@@ -101,12 +101,16 @@ templatePicker.addEventListener('change', async () => {
     masterBytes = bytes;
     templateState();
     byId('template-settings').open = false;
+    byId('editor-template-settings').open = false;
     if (!editor.hidden) message('Plantilla guardada en este navegador. Ya puedes pulsar «Guardar copia».');
     if (draft && session) await prepareDraft();
   } catch (error) {
     message(error.message, true);
-  } finally { templatePicker.value = ''; }
-});
+  } finally { picker.value = ''; }
+}
+templatePicker.addEventListener('change', () => chooseMaster(templatePicker));
+const editorTemplate = byId('editor-template');
+editorTemplate.addEventListener('change', () => chooseMaster(editorTemplate));
 
 async function prepareDraft() {
   if (!draft || !session || preparingDraft) return;
@@ -125,7 +129,18 @@ async function prepareDraft() {
 
 const saveDraft = byId('save-draft');
 const editorRegister = byId('editor-register');
-draftForm.addEventListener('input', () => { editorRegister.disabled = true; });
+const draftDownload = byId('draft-download');
+function clearDraftDownload() {
+  if (draftDownload.hasAttribute('href')) URL.revokeObjectURL(draftDownload.href);
+  draftDownload.removeAttribute('href');
+  draftDownload.hidden = true;
+  editorRegister.disabled = true;
+}
+draftForm.addEventListener('input', clearDraftDownload);
+draftDownload.addEventListener('click', () => {
+  editorRegister.disabled = false;
+  message('Después de descargar, pulsa «Ir a registrar ficha» y selecciona ese mismo PDF.');
+});
 
 function copyName(name, folio) {
   const safe = (name || '').replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ').trim().slice(0, 120);
@@ -143,6 +158,7 @@ function pdfBase64(bytes) {
 
 saveDraft.addEventListener('click', async () => {
   if (!draftForm.reportValidity()) return;
+  clearDraftDownload();
   saveDraft.disabled = true;
   try {
     const fields = Object.fromEntries(Object.keys(labels).map(key => {
@@ -154,20 +170,19 @@ saveDraft.addEventListener('click', async () => {
       try { masterBytes = await localMaster(); } catch { /* El selector permite configurarla. */ }
     }
     if (!masterBytes) {
-      message('Selecciona la ficha maestra una sola vez y después pulsa «Guardar copia».');
-      templatePicker.click();
+      byId('editor-template-settings').open = true;
+      editorTemplate.focus();
+      message('Selecciona la ficha maestra arriba y después pulsa «Guardar copia» de nuevo.');
       return;
     }
     const { bytes, chromeMaster } = await fillMaster(masterBytes, fields);
     if (!chromeMaster) throw Error('Selecciona la ficha maestra actualizada con el QR de verificación FINEN.');
-    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = copyName(fields.nombre, fields.folio);
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-    editorRegister.disabled = false;
-    message('Copia editable preparada. Ve a «Ir a registrar ficha» y selecciona el PDF que guardaste.');
+    draftDownload.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    draftDownload.download = copyName(fields.nombre, fields.folio);
+    draftDownload.textContent = 'Descargar ' + draftDownload.download;
+    draftDownload.hidden = false;
+    draftDownload.focus();
+    message('La copia está lista. Pulsa el enlace de descarga junto a «Guardar copia».');
   } catch (error) { message(error.message, true); }
   finally { saveDraft.disabled = false; }
 });
@@ -267,7 +282,7 @@ function clearFicha() {
   editorCopy.hidden = true;
   editorCopy.removeAttribute('href');
   saveDraft.disabled = false;
-  editorRegister.disabled = true;
+  clearDraftDownload();
   for (const input of byId('draft-fields').querySelectorAll('input')) input.readOnly = false;
 }
 

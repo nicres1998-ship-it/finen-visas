@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <title>Administración | FINEN VISA ADVISORY</title>
-  <script type="module" src="assets/admin-references.mjs?v=archivo1"></script>
+  <script type="module" src="assets/admin-references.mjs?v=guardar2"></script>
   <style>
     :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #183747; background: #f1f7f7 }
     * { box-sizing: border-box }
@@ -56,9 +56,15 @@
     <p id="message" role="status" aria-live="polite"></p>
     <section id="editor" aria-labelledby="editor-title">
       <h1 id="editor-title">Ficha maestra FINEN</h1>
+      <details id="editor-template-settings">
+        <summary>Configurar ficha maestra en este navegador</summary>
+        <label>Selecciona el PDF maestro de FINEN
+          <input id="editor-template" type="file" accept="application/pdf,.pdf">
+        </label>
+      </details>
       <form id="draft-form">
         <div class="sheet-scroll"><div id="draft-fields"></div></div>
-        <div class="actions"><button id="save-draft" type="button">Guardar copia</button><button id="editor-register" disabled>Ir a registrar ficha</button><a id="editor-copy" class="download" hidden>Descargar ficha definitiva</a><button id="editor-next" class="secondary" type="button" hidden>Nueva referencia</button><button class="secondary" id="open-login" type="button">Iniciar sesión</button></div>
+        <div class="actions"><button id="save-draft" type="button">Guardar copia</button><a id="draft-download" class="download" hidden>Descargar copia editable</a><button id="editor-register" disabled>Ir a registrar ficha</button><a id="editor-copy" class="download" hidden>Descargar ficha definitiva</a><button id="editor-next" class="secondary" type="button" hidden>Nueva referencia</button><button class="secondary" id="open-login" type="button">Iniciar sesión</button></div>
       </form>
     </section>
     <form id="login" hidden>
