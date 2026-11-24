@@ -1,6 +1,6 @@
 const base = 'https://upbcsdocsoicujeylpmx.supabase.co';
 const key = 'sb_publishable_wOqfHlkJATss_6Ow_6jgaw_GepOkl6s';
-import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256, fillMaster, validateMaster } from './admin-pdf.mjs?v=copiaregistro1';
+import { labels, MASTER, readFicha, verifier, validateFields, sha256, fillMaster, validateMaster } from './admin-pdf.mjs?v=copiaregistro1';
 
 import { localMaster, localCopy } from './admin-template.mjs?v=expedientes2';
 
@@ -127,6 +127,20 @@ const saveDraft = byId('save-draft');
 const editorRegister = byId('editor-register');
 draftForm.addEventListener('input', () => { editorRegister.disabled = true; });
 
+function copyName(name, folio) {
+  const safe = (name || '').replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ').trim().slice(0, 120);
+  return (safe ? safe + ' - ' : '') + folio + '.pdf';
+}
+
+function pdfBase64(bytes) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(new Blob([bytes], { type: 'application/pdf' }));
+  });
+}
+
 saveDraft.addEventListener('click', async () => {
   if (!draftForm.reportValidity()) return;
   saveDraft.disabled = true;
@@ -144,11 +158,12 @@ saveDraft.addEventListener('click', async () => {
       templatePicker.click();
       return;
     }
-    const { bytes } = await fillMaster(masterBytes, fields);
+    const { bytes, chromeMaster } = await fillMaster(masterBytes, fields);
+    if (!chromeMaster) throw Error('Selecciona la ficha maestra actualizada con el QR de verificación FINEN.');
     const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = fields.folio + '-editable.pdf';
+    link.download = copyName(fields.nombre, fields.folio);
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
     editorRegister.disabled = false;
@@ -341,50 +356,31 @@ issue.addEventListener('click', async () => {
   try {
     const prepared = current.fromDraft && !current.fromPdf
       ? { ...current, ...await fillMaster(masterBytes, current.fields) } : current;
-    let bytes = prepared.bytes && await prepareDeliveryPdf(prepared, current.token);
+    const bytes = prepared.bytes;
+    if (!bytes) throw Error('Selecciona el PDF editable para guardar el expediente completo.');
+    if (!prepared.chromeMaster) throw Error('Usa la ficha maestra actualizada para conservar el QR y el botón de verificación.');
+    const encoded = await pdfBase64(bytes);
     if (auth !== session) return;
-    const row = await rpc('finen_registrar_ficha_pdf', {
+    const row = await rpc('finen_archivar_expediente', {
       p_plantilla_sha256: MASTER,
-      p_pdf_sha256: current.hash,
+      p_pdf_sha256: await sha256(bytes),
       p_campos: current.fields,
       p_fecha_emision: current.issue,
       p_fecha_vencimiento: current.due,
       p_importe: current.amount,
-      p_token_qr: current.token
+      p_token_qr: current.token,
+      p_archivo_base64: encoded
     });
     if (auth !== session) return;
-    if (row?.folio !== current.fields.folio || !/^[A-Za-z0-9_-]{24,128}$/.test(row?.token_qr ?? '')) {
+    if (row?.folio !== current.fields.folio || !row.token_qr) {
       throw Error('El servidor devolvió una referencia que no coincide con la ficha.');
-    }
-    if (bytes && row.token_qr !== current.token) bytes = await prepareDeliveryPdf(prepared, row.token_qr);
-    if (auth !== session) return;
-    let copyStored = true;
-    if (bytes) {
-      try { await localCopy(row.folio, row.token_qr, bytes); } catch { copyStored = false; }
-      if (auth !== session) return;
-      downloadUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-      download.href = downloadUrl;
-      download.download = row.folio + '.pdf';
-      download.hidden = false;
     }
     verifyLink.href = verifier(row.token_qr, row.folio);
     verifyLink.hidden = false;
     completed = true;
     newReference.hidden = Boolean(current.fromPdf);
-    if (current.fromEditor && bytes) {
-      editor.hidden = false;
-      editorCopy.href = downloadUrl;
-      editorCopy.download = download.download;
-      editorCopy.hidden = false;
-      editorNext.hidden = false;
-      draftForm.querySelector('button').disabled = true;
-      for (const input of byId('draft-fields').querySelectorAll('input')) input.readOnly = true;
-    }
     draft = undefined;
-    message(current.fromPdf
-      ? 'Ficha registrada. Regresa al PDF maestro y pulsa «Guardar copia» para guardar la ficha del cliente.'
-      : copyStored ? 'Expediente registrado. La ficha definitiva está lista para descargar.'
-      : 'Expediente registrado. Descarga la ficha ahora: el navegador no pudo guardar una copia para el historial.');
+    message('Expediente registrado. Ya puedes enviar al cliente el mismo PDF que guardaste.');
     await loadHistory();
   } catch (error) {
     if (auth === session) message(error.message, true);
@@ -444,7 +440,9 @@ function renderRow(row) {
       if (!auth) return;
       downloadButton.disabled = true;
       try {
-        const bytes = await localCopy(row.folio, row.token_qr);
+        const encoded = await rpc('finen_descargar_expediente', { p_folio: row.folio });
+        const bytes = encoded ? Uint8Array.from(atob(encoded), character => character.charCodeAt(0))
+          : await localCopy(row.folio, row.token_qr);
         if (auth !== session) return;
         if (!bytes) {
           message('La copia de este expediente no está guardada en este navegador. Busca el PDF que se descargó al registrarlo.', true);
@@ -453,11 +451,11 @@ function renderRow(row) {
         const url = URL.createObjectURL(new Blob([bytes], {type: 'application/pdf'}));
         const link = document.createElement('a');
         link.href = url;
-        link.download = row.folio + '.pdf';
+        link.download = copyName(row.cliente, row.folio);
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 60000);
       } catch {
-        if (auth === session) message('No se pudo abrir la copia guardada en este navegador.', true);
+        if (auth === session) message('No se pudo recuperar el PDF del expediente.', true);
       } finally {
         downloadButton.disabled = false;
       }
