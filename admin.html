@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <title>Administración | FINEN VISA ADVISORY</title>
-  <script type="module" src="assets/admin-references.mjs?v=chrome1"></script>
+  <script type="module" src="assets/admin-references.mjs?v=registro2"></script>
   <style>
     :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #183747; background: #f1f7f7 }
     * { box-sizing: border-box }
@@ -56,14 +56,14 @@
     </form>
     <div id="panel" hidden>
       <section aria-labelledby="issue-title">
-        <h1 id="issue-title">Emitir referencia desde PDF</h1>
+        <h1 id="issue-title">Registrar ficha de pago</h1>
         <label>Ficha de pago rellenada
           <input id="pdf" type="file" accept="application/pdf,.pdf">
         </label>
-        <p>Guarda la ficha rellena con <strong>Archivo → Guardar como</strong> en tu lector de PDF para conservar los campos editables.</p>
+        <p>En Chrome, descarga el PDF con tus cambios y selecciónalo aquí. Los datos se llenarán automáticamente. Tras registrarlos podrás descargar el PDF para el cliente.</p>
         <dl id="fields" hidden></dl>
         <div class="actions">
-          <button id="issue" disabled>Guardar ficha</button>
+          <button id="issue" disabled>Registrar ficha</button>
           <a class="download" id="verify-link" target="_blank" rel="noopener noreferrer" hidden>Ver tarjeta registrada</a>
           <a class="download" id="download" hidden>Descargar PDF definitivo</a>
         </div>

@@ -71,7 +71,7 @@ function preview(parsed) {
   }
   fields.hidden = false;
   ficha = { ...parsed, token: crypto.randomUUID().replaceAll('-', '') };
-  issue.textContent = parsed.bytes ? 'Guardar ficha' : 'Confirmar registro';
+  issue.textContent = 'Registrar ficha';
   issue.disabled = false;
 }
 
@@ -122,7 +122,7 @@ login.addEventListener('submit', async event => {
     if (draft) {
       const hash = await sha256(new TextEncoder().encode('FINEN:maestro:v1:' + JSON.stringify(draft.fields)));
       preview({ ...draft, hash });
-      message('Revisa los datos de la ficha y pulsa «Confirmar registro».');
+      message('Revisa los datos de la ficha y pulsa «Registrar ficha».');
     }
     await loadHistory();
   } catch (error) {

@@ -15,6 +15,7 @@ const byId = id => document.getElementById(id);
 function show(state, title, notice, stampText) {
   document.querySelector('main').dataset.state = state;
   byId('title').textContent = title;
+  byId('issuer').hidden = state !== 'valid';
   const note = byId('notice');
   note.textContent = notice;
   note.hidden = false;
