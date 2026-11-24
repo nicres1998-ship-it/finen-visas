@@ -1,6 +1,6 @@
 const base = 'https://upbcsdocsoicujeylpmx.supabase.co';
 const key = 'sb_publishable_wOqfHlkJATss_6Ow_6jgaw_GepOkl6s';
-import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256 } from './admin-pdf.mjs?v=maestro1';
+import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256 } from './admin-pdf.mjs?v=chrome1';
 
 const byId = id => document.getElementById(id);
 const login = byId('login');

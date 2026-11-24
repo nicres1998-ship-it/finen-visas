@@ -59,6 +59,7 @@ export async function templateFingerprint(page, normalizeCompression = false) {
 
 export const MASTER = '0cc1c6a5f328bbe4213e742cf1343f09f68abebed9281c0a337f014c4360ab98';
 const MASTER_DECODED = '666542c8c01dca2d818de977b5698a56c46330df6086e7df001726004cdcd31a';
+const MASTER_CHROME = 'e9e6cbfadf8e9886c5ae80d0a8be9d9ff56f6865c502888220a11804b1a10b09';
 const QR_IMAGE = 'fzImg8';
 
 function normalizeDate(raw) {
@@ -91,12 +92,14 @@ export async function readFicha(bytes) {
   if (issued) {
     throw Error('Este PDF ya tiene el botón «Verificar ficha». Puedes enviarlo al cliente o consultar su folio en Referencias.');
   }
-  if (!page || rest.length || (await templateFingerprint(page) !== MASTER
-      && await templateFingerprint(page, true) !== MASTER_DECODED)) {
+  const normalized = page && !rest.length ? await templateFingerprint(page, true) : '';
+  const chromeMaster = normalized === MASTER_CHROME;
+  if (!page || rest.length || (!chromeMaster && normalized !== MASTER_DECODED
+      && await templateFingerprint(page) !== MASTER)) {
     throw Error('No pude reconocer esta versión de la ficha editable. Adjunta ese mismo PDF en el chat para revisar cómo lo guardó tu lector.');
   }
   const fields = Object.fromEntries(Object.keys(labels).map(key => [key, form.getTextField(key).getText() ?? '']));
-  return { ...validateFields(fields), bytes, hash: await sha256(bytes) };
+  return { ...validateFields(fields), chromeMaster, bytes, hash: await sha256(bytes) };
 }
 
 export function validateFields(fields) {
@@ -117,7 +120,7 @@ export function validateFields(fields) {
   return { fields, issue, due, amount: amount.replaceAll(',', '') };
 }
 
-export async function prepareDeliveryPdf({ bytes, fields }, token) {
+export async function prepareDeliveryPdf({ bytes, fields, chromeMaster }, token) {
   const { PDFDict, PDFDocument, PDFName, PDFString, StandardFonts, rgb } = PDFLib;
   const document = await PDFDocument.load(bytes, { updateMetadata: false });
   const page = document.getPage(0);
@@ -128,7 +131,7 @@ export async function prepareDeliveryPdf({ bytes, fields }, token) {
   code.make();
   const modules = code.getModuleCount();
   const sizeWithMargin = modules + 8;
-  const scale = .9 / sizeWithMargin;
+  const scale = (chromeMaster ? .74 : .9) / sizeWithMargin;
   const commands = [`1 g 0 0 ${sizeWithMargin} ${sizeWithMargin} re f`, '0 g'];
   for (let y = 0; y < modules; y++) {
     for (let x = 0; x < modules; x++) {
@@ -138,12 +141,32 @@ export async function prepareDeliveryPdf({ bytes, fields }, token) {
   commands.push('f');
   const qr = context.flateStream(commands.join('\n'), {
     Type: 'XObject', Subtype: 'Form', BBox: [0, 0, sizeWithMargin, sizeWithMargin],
-    Matrix: [scale, 0, 0, scale, .05, .075], Resources: {}
+    Matrix: [scale, 0, 0, scale, chromeMaster ? .13 : .05, chromeMaster ? .225 : .075], Resources: {}
   });
   const images = page.node.Resources().lookup(PDFName.of('XObject'), PDFDict);
   if (!images.has(PDFName.of(QR_IMAGE))) throw Error('Falta el espacio de verificación de la ficha.');
   images.set(PDFName.of(QR_IMAGE), context.register(qr));
 
+  if (chromeMaster) {
+    const annotations = page.node.Annots();
+    let verificationLink;
+    for (let i = annotations.size() - 1; i >= 0; i--) {
+      const annotation = annotations.lookup(i);
+      if (!(annotation instanceof PDFDict)) continue;
+      const action = annotation.lookup(PDFName.of('A'));
+      if (!(action instanceof PDFDict)) continue;
+      const uri = action.lookup(PDFName.of('URI'));
+      if (!(uri instanceof PDFString)) continue;
+      if (uri.decodeText() === 'https://finenvisas.com.mx/verificar.html?v=maestro1') {
+        action.set(PDFName.of('URI'), PDFString.of(url));
+        verificationLink = true;
+      }
+      if (uri.decodeText() === 'https://finenvisas.com.mx/admin.html?v=chrome1') annotations.remove(i);
+    }
+    if (!verificationLink) throw Error('No se encontró el botón «Verificar ficha».');
+    page.drawRectangle({ x: 346, y: 7, width: 134, height: 20, color: rgb(.9294, .9725, .9725) });
+    return document.save({ updateFieldAppearances: false });
+  }
   const button = { x: 269, y: 85.25, width: 96, height: 10.75 };
   const label = 'Verificar ficha';
   const font = await document.embedFont(StandardFonts.HelveticaBold);
