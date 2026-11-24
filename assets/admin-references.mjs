@@ -106,8 +106,8 @@ async function prepareDraft() {
     if (auth !== session || current !== draft) return;
     preview({ ...current, hash, fromDraft: true });
     templateState();
-    issue.disabled = !masterBytes;
-    message(masterBytes ? 'Revisa los datos y pulsa «Registrar ficha».' : 'Configura la ficha maestra para preparar la copia del cliente.');
+    issue.disabled = !current.fromPdf && !masterBytes;
+    message(current.fromPdf || masterBytes ? 'Revisa los datos y pulsa «Registrar ficha».' : 'Configura la ficha maestra para preparar la copia del cliente.');
   } finally { preparingDraft = false; }
 }
 
@@ -156,9 +156,11 @@ if (incoming !== null) {
       if (typeof value !== 'string' || value.length > 350) throw Error('Datos incompletos');
       return [name, value];
     }));
-    draft = validateFields(fields);
+    draft = { ...validateFields(fields), fromPdf: true };
     editor.hidden = true;
     login.hidden = false;
+    byId('template-settings').hidden = true;
+    byId('pdf').closest('details').hidden = true;
     message('Ficha recibida desde el PDF. Inicia sesión para confirmar el registro.');
   } catch {
     message('No se pudieron leer los datos del PDF. Abre la ficha y pulsa «Registrar ficha en FINEN» de nuevo.', true);
@@ -280,8 +282,9 @@ issue.addEventListener('click', async () => {
   let completed = false;
   message(current.bytes ? 'Preparando PDF y registrando la referencia…' : 'Registrando la referencia…');
   try {
-    const prepared = current.fromDraft ? { ...current, ...await fillMaster(masterBytes, current.fields) } : current;
-    let bytes = await prepareDeliveryPdf(prepared, current.token);
+    const prepared = current.fromDraft && !current.fromPdf
+      ? { ...current, ...await fillMaster(masterBytes, current.fields) } : current;
+    let bytes = prepared.bytes && await prepareDeliveryPdf(prepared, current.token);
     if (auth !== session) return;
     const row = await rpc('finen_registrar_ficha_pdf', {
       p_plantilla_sha256: MASTER,
@@ -307,9 +310,11 @@ issue.addEventListener('click', async () => {
     verifyLink.href = verifier(row.token_qr, row.folio);
     verifyLink.hidden = false;
     completed = true;
-    newReference.hidden = false;
+    newReference.hidden = Boolean(current.fromPdf);
     draft = undefined;
-    message('Referencia registrada. Usa «Guardar copia» para descargar el PDF del cliente.');
+    message(current.fromPdf
+      ? 'Ficha registrada. Regresa al PDF maestro y pulsa «Guardar copia» para guardar la ficha del cliente.'
+      : 'Referencia registrada. Usa «Guardar copia» para descargar el PDF del cliente.');
     await loadHistory();
   } catch (error) {
     if (auth === session) message(error.message, true);
