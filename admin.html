@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <title>Administración | FINEN VISA ADVISORY</title>
-  <script type="module" src="assets/admin-references.mjs?v=copiaregistro1"></script>
+  <script type="module" src="assets/admin-references.mjs?v=expedientes2"></script>
   <style>
     :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #183747; background: #f1f7f7 }
     * { box-sizing: border-box }
@@ -49,6 +49,7 @@
   <header><div>
     <img src="assets/logo-finen.png" alt="FINEN VISA ADVISORY">
     <strong>Administración</strong>
+    <a href="admin.html?modo=editor">Editor de fichas</a>
     <button class="secondary" id="logout" hidden>Cerrar sesión</button>
   </div></header>
   <main>
@@ -72,8 +73,8 @@
     </form>
     <div id="panel" hidden>
       <section aria-labelledby="issue-title">
-        <h1 id="issue-title">Registrar ficha de pago</h1>
-        <details id="template-settings">
+        <h1 id="issue-title">Registrar expediente desde PDF</h1>
+        <details id="template-settings" hidden>
           <summary>Plantilla para guardar copias</summary>
           <label>Seleccionar ficha maestra una sola vez
             <input id="template" type="file" accept="application/pdf,.pdf">
@@ -81,7 +82,7 @@
           <p id="template-status" role="status"></p>
         </details>
         <details id="import-settings" open>
-          <summary>Subir copia editable para registrar</summary>
+          <summary>Subir ficha de pago</summary>
           <label>Ficha de pago editable
             <input id="pdf" type="file" accept="application/pdf,.pdf">
           </label>
@@ -95,7 +96,7 @@
         </div>
       </section>
       <section aria-labelledby="history-title">
-        <h2 id="history-title">Referencias</h2>
+        <h2 id="history-title">Expedientes registrados</h2>
         <label>Buscar por folio o titular
           <input id="search" type="search">
         </label>

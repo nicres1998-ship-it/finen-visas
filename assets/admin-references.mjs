@@ -2,7 +2,7 @@ const base = 'https://upbcsdocsoicujeylpmx.supabase.co';
 const key = 'sb_publishable_wOqfHlkJATss_6Ow_6jgaw_GepOkl6s';
 import { labels, MASTER, readFicha, prepareDeliveryPdf, verifier, validateFields, sha256, fillMaster, validateMaster } from './admin-pdf.mjs?v=copiaregistro1';
 
-import { localMaster } from './admin-template.mjs';
+import { localMaster, localCopy } from './admin-template.mjs?v=expedientes2';
 
 const byId = id => document.getElementById(id);
 const login = byId('login');
@@ -172,14 +172,20 @@ draftForm.addEventListener('submit', event => {
   event.preventDefault();
   if (!editorRegister.disabled) openImport();
 });
-if (new URLSearchParams(location.search).get('modo') === 'registro') openImport();
+if (new URLSearchParams(location.search).get('modo') === 'editor') byId('template-settings').hidden = false;
+else openImport();
 
 newReference.addEventListener('click', () => {
   const registeredFolio = ficha?.fields.folio ?? '';
   const parts = /^(RP-\d{4}-)(\d+)$/.exec(registeredFolio);
   clearFicha();
   draft = undefined;
-  importing = false;
+  if (importing) {
+    pdf.value = '';
+    pdf.focus();
+    message('Selecciona el siguiente PDF editable.');
+    return;
+  }
   draftForm.reset();
   if (parts) draftForm.elements.folio.value = parts[1] + String(BigInt(parts[2]) + 1n).padStart(parts[2].length, '0');
   draftForm.elements.fecha.value = today();
@@ -352,7 +358,10 @@ issue.addEventListener('click', async () => {
     }
     if (bytes && row.token_qr !== current.token) bytes = await prepareDeliveryPdf(prepared, row.token_qr);
     if (auth !== session) return;
+    let copyStored = true;
     if (bytes) {
+      try { await localCopy(row.folio, row.token_qr, bytes); } catch { copyStored = false; }
+      if (auth !== session) return;
       downloadUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
       download.href = downloadUrl;
       download.download = row.folio + '.pdf';
@@ -374,7 +383,8 @@ issue.addEventListener('click', async () => {
     draft = undefined;
     message(current.fromPdf
       ? 'Ficha registrada. Regresa al PDF maestro y pulsa «Guardar copia» para guardar la ficha del cliente.'
-      : 'Referencia registrada. Usa «Descargar ficha definitiva» para obtener el PDF del cliente.');
+      : copyStored ? 'Expediente registrado. La ficha definitiva está lista para descargar.'
+      : 'Expediente registrado. Descarga la ficha ahora: el navegador no pudo guardar una copia para el historial.');
     await loadHistory();
   } catch (error) {
     if (auth === session) message(error.message, true);
@@ -423,6 +433,36 @@ function renderRow(row) {
     link.rel = 'noopener noreferrer';
     link.textContent = 'Verificar';
     actions.append(link);
+  }
+  if (row.token_qr) {
+    const downloadButton = document.createElement('button');
+    downloadButton.type = 'button';
+    downloadButton.className = 'secondary';
+    downloadButton.textContent = 'Descargar PDF';
+    downloadButton.onclick = async () => {
+      const auth = session;
+      if (!auth) return;
+      downloadButton.disabled = true;
+      try {
+        const bytes = await localCopy(row.folio, row.token_qr);
+        if (auth !== session) return;
+        if (!bytes) {
+          message('La copia de este expediente no está guardada en este navegador. Busca el PDF que se descargó al registrarlo.', true);
+          return;
+        }
+        const url = URL.createObjectURL(new Blob([bytes], {type: 'application/pdf'}));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = row.folio + '.pdf';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch {
+        if (auth === session) message('No se pudo abrir la copia guardada en este navegador.', true);
+      } finally {
+        downloadButton.disabled = false;
+      }
+    };
+    actions.append(downloadButton);
   }
   if (row.estatus === 'PENDIENTE') {
     for (const [status, label] of [['PAGADA', 'Confirmar pago'], ['CANCELADA', 'Cancelar referencia']]) {
