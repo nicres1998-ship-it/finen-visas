@@ -57,7 +57,7 @@ async function verify(manual) {
     show('waiting', 'Verificación de ficha de pago', 'Ingresa el folio y el titular que figuran en tu ficha.');
     return;
   }
-  const invalid = () => show('invalid', 'Esta ficha no pertenece a FINEN', 'No realices el pago.', 'Sin validar');
+  const invalid = () => show('invalid', 'Esta ficha no pertenece a FINEN', 'No realices el pago.', '×');
   if (token && !manual && !tokenPattern.test(token)) {
     invalid();
     return;
@@ -79,9 +79,16 @@ async function verify(manual) {
       return;
     }
     if (!row?.folio || !row.estatus) throw Error('Respuesta inválida');
-    show('valid', 'Ficha de pago verificada',
-      row.deposito ? 'Compara el importe y las terminaciones con tu ficha antes de pagar.'
-        : 'Confirma los datos de depósito con FINEN antes de pagar.', 'FINEN · Verificada');
+    lookup.hidden = true;
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+    const payable = row.estatus === 'PENDIENTE'
+      && /^\d{4}-\d{2}-\d{2}$/.test(row.fecha_vencimiento)
+      && row.fecha_vencimiento >= today && Boolean(row.deposito);
+    show('valid', 'Ficha de pago verificada', payable
+      ? 'Referencia verificada por FINEN. Realiza tu pago únicamente a una cuenta oficial que coincida con la ficha y las terminaciones registradas abajo.'
+      : 'Esta referencia fue emitida por FINEN. Consulta su estado y vigencia en esta tarjeta.', '✓');
     showDetails(row);
   } catch {
     if (visit !== verification) return;

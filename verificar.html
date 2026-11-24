@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <title>Verificar ficha de pago | FINEN</title>
-  <script type="module" src="assets/verificar-ficha.mjs?v=finencard2"></script>
+  <script type="module" src="assets/verificar-ficha.mjs?v=tarjeta3"></script>
   <style>
     :root { font: 16px/1.55 system-ui, sans-serif; color: #172a35; background: #edf2f4 }
     * { box-sizing: border-box }
@@ -20,12 +20,11 @@
     header img { width: 8.25rem; max-width: 100%; height: auto }
     .issuer { margin: .6rem auto 0; color: #315661; font-size: .88rem; font-weight: 650 }
     h1 { max-width: 24ch; margin: .55rem auto 0; font: 700 clamp(1.7rem, 6vw, 2.35rem)/1.12 Georgia, serif }
-    #stamp { display: grid; place-items: center; width: 10rem; min-height: 3.2rem;
-      margin: .55rem auto 1rem; padding: .3rem; border: 4px double currentColor; border-radius: 45%;
-      color: #416983; font: bold .72rem/1.2 Georgia, serif; letter-spacing: .12em;
-      text-transform: uppercase; transform: rotate(-7deg);
-      background: repeating-linear-gradient(3deg, #41698314 0 1px, transparent 1px 6px) }
-    #stamp[data-state="invalid"] { color: #922e38 }
+    #stamp { display:grid; place-items:center; width:4.2rem; height:4.2rem; margin:.85rem auto;
+      border-radius:50%; background:#dff4eb; color:#137252; font:700 2.45rem/1 system-ui;
+      border:1px solid #acdcca; box-shadow:0 0 0 .35rem #f0faf5 }
+    #stamp[data-state="invalid"] { background:#faeaec; color:#922e38; border-color:#efc1c8; box-shadow:none }
+    main[data-state="valid"] { border-top:4px solid #188368 }
     .content { padding: clamp(1rem, 5vw, 2rem) }
     #notice { margin: 0 0 1.15rem; padding: .8rem 1rem; border-left: 3px solid #418084;
       border-radius: .45rem; background: #eff7f6; color: #254c51 }
