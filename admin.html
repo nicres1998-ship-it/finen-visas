@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <title>Administración | FINEN VISA ADVISORY</title>
-  <script type="module" src="assets/admin-references.mjs?v=editar1"></script>
+  <script type="module" src="assets/admin-references.mjs?v=editar2"></script>
   <style>
     :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #183747; background: #f1f7f7 }
     * { box-sizing: border-box }
@@ -42,6 +42,9 @@
     #draft-fields input:focus { outline:2px solid #117886; outline-offset:1px }
     #draft-form > .actions { margin-top:.8rem; justify-content:flex-end }
     details { margin:1rem 0 }
+    dialog { width:min(42rem, 96vw); max-height:90vh; border:1px solid #b4cdd0; border-radius:1rem }
+    dialog::backdrop { background:#18374766 }
+    #edit-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr)); gap:0 1rem }
     #message[data-error] { color: #a32727 }
   </style>
 </head>
@@ -123,12 +126,10 @@
     <dialog id="edit-dialog">
       <h2>Editar referencia <span id="edit-folio"></span></h2>
       <form id="edit-form">
-        <label>Sube el PDF editable corregido con el mismo folio
-          <input id="edit-pdf" type="file" accept=".pdf,application/pdf" required>
-        </label>
+        <div id="edit-fields"></div>
         <p id="edit-error" role="alert"></p>
         <div class="actions">
-          <button>Guardar cambios</button>
+          <button id="edit-save" disabled>Guardar cambios</button>
           <button type="button" class="secondary" onclick="this.closest('dialog').close()">Cerrar</button>
         </div>
       </form>

@@ -429,6 +429,79 @@ async function loadHistory() {
   }
 }
 
+async function editReference(row) {
+  const auth = session;
+  const dialog = byId('edit-dialog');
+  const form = byId('edit-form');
+  const fieldsBox = byId('edit-fields');
+  const feedback = byId('edit-error');
+  const save = byId('edit-save');
+  fieldsBox.replaceChildren();
+  feedback.textContent = 'Abriendo la ficha guardada…';
+  save.disabled = true;
+  form.onsubmit = null;
+  byId('edit-folio').textContent = row.folio;
+  dialog.showModal();
+  const attempt = Symbol();
+  form.editAttempt = attempt;
+  const active = () => auth === session && dialog.open && form.editAttempt === attempt;
+  try {
+    const encoded = await rpc('finen_descargar_expediente', { p_folio: row.folio });
+    if (!active()) return;
+    if (!encoded) throw Error('Este expediente no tiene una copia editable guardada en línea.');
+    const source = Uint8Array.from(atob(encoded), character => character.charCodeAt(0));
+    const parsed = await readFicha(source);
+    if (!active()) return;
+    if (parsed.fields.folio !== row.folio) throw Error('El folio de la copia guardada no coincide.');
+    const inputs = {};
+    for (const [name, label] of Object.entries(labels)) {
+      if (name === 'folio' || name === 'folio_pie') continue;
+      const entry = document.createElement('label');
+      entry.textContent = label;
+      const field = document.createElement('input');
+      field.name = name;
+      field.value = parsed.fields[name];
+      field.required = requiredFields.has(name);
+      field.maxLength = 350;
+      entry.append(field);
+      fieldsBox.append(entry);
+      inputs[name] = field;
+    }
+    feedback.textContent = '';
+    save.disabled = false;
+    form.onsubmit = async event => {
+      event.preventDefault();
+      if (!active() || save.disabled) return;
+      save.disabled = true;
+      feedback.textContent = '';
+      try {
+        const fields = { ...parsed.fields };
+        for (const [name, field] of Object.entries(inputs)) fields[name] = field.value.trim();
+        const validated = validateFields(fields);
+        const { bytes } = await fillMaster(source, fields);
+        const verified = await readFicha(bytes);
+        if (JSON.stringify(verified.fields) !== JSON.stringify(fields)) throw Error('No se pudo conservar un campo del PDF.');
+        const payload = await pdfBase64(bytes);
+        if (!active()) return;
+        await rpc('finen_editar_expediente', {
+          p_campos: fields, p_fecha_emision: validated.issue, p_fecha_vencimiento: validated.due,
+          p_importe: validated.amount, p_archivo_base64: payload
+        });
+        if (!active()) return;
+        dialog.close();
+        message('Referencia y PDF actualizados. Descarga la copia corregida y envíala al cliente.');
+        await loadHistory();
+      } catch (error) {
+        if (active()) feedback.textContent = error.message;
+      } finally {
+        if (active()) save.disabled = false;
+      }
+    };
+  } catch (error) {
+    if (active()) feedback.textContent = error.message;
+  }
+}
+
 function renderRow(row) {
   const tr = document.createElement('tr');
   for (const value of [row.folio, row.cliente, row.importe, row.estatus]) {
@@ -482,39 +555,7 @@ function renderRow(row) {
     edit.type = 'button';
     edit.className = 'secondary';
     edit.textContent = 'Editar referencia';
-    edit.onclick = () => {
-      const picker = byId('edit-pdf');
-      picker.value = '';
-      byId('edit-error').textContent = '';
-      byId('edit-folio').textContent = row.folio;
-      byId('edit-dialog').showModal();
-      byId('edit-form').onsubmit = async event => {
-        event.preventDefault();
-        const submit = event.submitter;
-        submit.disabled = true;
-        try {
-          const auth = session;
-          const file = picker.files[0];
-          if (!file || file.size > 25 * 1024 * 1024) throw Error('Selecciona un PDF de hasta 25 MB.');
-          const bytes = await file.arrayBuffer();
-          const parsed = await readFicha(bytes);
-          if (!parsed.chromeMaster || parsed.fields.folio !== row.folio) {
-            throw Error('Selecciona la ficha editable de FINEN con el mismo folio.');
-          }
-          const encoded = await pdfBase64(bytes);
-          if (!auth || auth !== session) throw Error('Inicia sesión nuevamente.');
-          await rpc('finen_editar_expediente', {
-            p_campos: parsed.fields, p_fecha_emision: parsed.issue, p_fecha_vencimiento: parsed.due,
-            p_importe: parsed.amount, p_archivo_base64: encoded
-          });
-          byId('edit-dialog').close();
-          message('Referencia y PDF actualizados. Envía al cliente la copia corregida.');
-          await loadHistory();
-        } catch (error) {
-          byId('edit-error').textContent = error.message;
-        } finally { submit.disabled = false; }
-      };
-    };
+    edit.onclick = () => editReference(row);
     actions.append(edit);
   }
   if (row.estatus === 'PENDIENTE') {
