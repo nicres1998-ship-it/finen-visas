@@ -144,7 +144,7 @@ draftDownload.addEventListener('click', () => {
 
 function copyName(name, folio) {
   const safe = (name || '').replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ').trim().slice(0, 120);
-  return (safe ? safe + ' - ' : '') + folio + '.pdf';
+  return 'RF - ' + folio + (safe ? ' - ' + safe : '') + '.pdf';
 }
 
 function pdfBase64(bytes) {
