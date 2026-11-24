@@ -13,6 +13,7 @@ const fields = {
 const byId = id => document.getElementById(id);
 
 function show(state, title, notice, stampText) {
+  document.querySelector('main').dataset.state = state;
   byId('title').textContent = title;
   const note = byId('notice');
   note.textContent = notice;
@@ -28,6 +29,7 @@ function showDetails(row) {
   for (const [field, label] of Object.entries(fields)) {
     if (row[field] == null || row[field] === '') continue;
     const line = document.createElement('div');
+    line.dataset.field = field;
     const term = document.createElement('dt');
     const value = document.createElement('dd');
     term.textContent = label;
