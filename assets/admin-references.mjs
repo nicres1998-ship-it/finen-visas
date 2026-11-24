@@ -39,6 +39,16 @@ function message(text, error = false) {
   status.toggleAttribute('data-error', error);
 }
 
+let statusTimer;
+function confirmOperation(text) {
+  message(text);
+  const status = byId('operation-status');
+  status.textContent = text;
+  status.hidden = false;
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => { status.hidden = true; }, 9000);
+}
+
 const verifyLink = byId('verify-link');
 let draft;
 const editor = byId('editor');
@@ -489,7 +499,7 @@ async function editReference(row) {
         });
         if (!active()) return;
         dialog.close();
-        message('Referencia y PDF actualizados. Descarga la copia corregida y envíala al cliente.');
+        confirmOperation('Cambios guardados en ' + row.folio + '. El PDF del expediente se actualizó.');
         await loadHistory();
       } catch (error) {
         if (active()) feedback.textContent = error.message;
@@ -541,6 +551,7 @@ function renderRow(row) {
         link.href = url;
         link.download = copyName(row.cliente, row.folio);
         link.click();
+        confirmOperation('Descarga iniciada: ' + link.download);
         setTimeout(() => URL.revokeObjectURL(url), 60000);
       } catch {
         if (auth === session) message('No se pudo recuperar el PDF del expediente.', true);
